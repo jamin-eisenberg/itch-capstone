@@ -1,0 +1,9 @@
+enum StatementType {
+  START,
+  STOP,
+  ROTATE,
+  MOVE_FORWARD,
+  MOVE_BACKWARD,
+  HOOK_UP,
+  HOOK_DOWN
+};
