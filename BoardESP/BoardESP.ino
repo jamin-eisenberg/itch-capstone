@@ -1,7 +1,11 @@
+#include <ArduinoJson.h>
+
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 
+// IMPORTANT:
+// TODO question everything done so far and consider making all APIs REST APIs with web servers for unification (still need softAP so board and robot can be on the same network)
 
 // Set WiFi credentials
 // TODO change to Pi creds
@@ -14,12 +18,18 @@
 
 #define CONSOLE_HOST_NAME "consolehost.local:5000"
 
-bool enabled;
-
 ESP8266WebServer server(80);
 
 WiFiClient client;
 HTTPClient http;
+
+enum BoardStateRequestType {
+  FULL_STATE,
+  ACTIONABLE_BLOCK
+};
+
+void onReceiveStateRequest(BoardStateRequestType type);
+void onReceiveEnabledMsg(bool enable);
 
 void setup()
 {
@@ -34,33 +44,23 @@ void setup()
   // Begin WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-  serverSetup();
-
-  Serial.print("[HTTP] begin...\n");
-  Serial.println("http://" CONSOLE_HOST_NAME "/boards/" AP_SSID);
-  http.begin(client, "http://" CONSOLE_HOST_NAME "/boards/" AP_SSID);
-  http.addHeader("Content-Type", "text/plain");
-  Serial.print("[HTTP] POST...\n");
-  int httpCode = http.POST("http://" + WiFi.localIP().toString());
-
-  if (httpCode > 0) {
-    // HTTP header has been send and Server response header has been handled
-    Serial.printf("[HTTP] POST... code: %d\n", httpCode);
-
-    // file found at server
-    if (httpCode == HTTP_CODE_OK) {
-      const String& payload = http.getString();
-      Serial.println("received payload:\n<<");
-      Serial.println(payload);
-      Serial.println(">>");
-    }
-  } else {
-    Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
-  }
-
-  http.end();
+  //  serverSetup();
+  //  registerWithConsoleHost();
 }
 
 void loop() {
   server.handleClient();
+}
+
+void onReceiveStateRequest(BoardStateRequestType type) {
+  Serial.write(type);
+}
+
+void onReceiveEnabledMsg(bool enable) {
+  StaticJsonDocument<64> doc;
+
+  doc["name"] = enable ? "enable" : "disable";
+  doc["argument"] = nullptr;
+
+  serializeJson(doc, Serial);
 }
