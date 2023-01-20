@@ -34,6 +34,7 @@ void registerWithConsoleHost() {
   Serial.println("Registering with Console Host.");
   Serial.println("POSTing to URL: http://" CONSOLE_HOST_NAME "/boards/" AP_SSID);
   http.begin(client, "http://" CONSOLE_HOST_NAME "/boards/" AP_SSID);
+//  http.setTimeout(10000); // give it 10 secs
   http.addHeader("Content-Type", "text/plain");
   int httpCode = http.POST("http://" + WiFi.localIP().toString());
 

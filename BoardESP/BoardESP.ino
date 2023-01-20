@@ -4,19 +4,15 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 
-// IMPORTANT:
-// TODO question everything done so far and consider making all APIs REST APIs with web servers for unification (still need softAP so board and robot can be on the same network)
-
 // Set WiFi credentials
-// TODO change to Pi creds
-#define WIFI_SSID "Wendys Customers"
-#define WIFI_PASS "123Dogfood!"
+#define WIFI_SSID "itch"
+#define WIFI_PASS "capstone"
 
 // Set AP credentials
 #define AP_SSID "red-board"
 #define AP_PASS "capstone"
 
-#define CONSOLE_HOST_NAME "consolehost.local:5000"
+#define CONSOLE_HOST_NAME "consolehost:5000"
 
 ESP8266WebServer server(80);
 
@@ -44,8 +40,8 @@ void setup()
   // Begin WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-  //  serverSetup();
-  //  registerWithConsoleHost();
+  serverSetup();
+  registerWithConsoleHost();
 }
 
 void loop() {
@@ -53,7 +49,8 @@ void loop() {
 }
 
 void onReceiveStateRequest(BoardStateRequestType type) {
-  Serial.write(type);
+//  Serial.write(type);
+  server.send(200, "text/plain", "");
 }
 
 void onReceiveEnabledMsg(bool enable) {
