@@ -24,6 +24,7 @@ enum BoardStateRequestType {
   ACTIONABLE_BLOCK
 };
 
+
 void onReceiveStateRequest(BoardStateRequestType type);
 void onReceiveEnabledMsg(bool enable);
 
@@ -45,8 +46,14 @@ void setup()
 }
 
 void loop() {
+  if(Serial.available()) {
+    http.begin(client, 
+  }
+  
   server.handleClient();
 }
+
+
 
 void onReceiveStateRequest(BoardStateRequestType type) {
 //  Serial.write(type);
