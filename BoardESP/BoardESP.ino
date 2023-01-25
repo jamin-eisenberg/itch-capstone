@@ -12,6 +12,10 @@
 #define AP_SSID "red-board"
 #define AP_PASS "capstone"
 
+#define AP_CHANNEL 1
+#define AP_HIDDEN 0
+#define AP_MAX_CONNECTED_STATIONS 1
+
 #define CONSOLE_HOST_NAME "consolehost:5000"
 
 ESP8266WebServer server(80);
@@ -36,7 +40,7 @@ void setup()
 
   // Begin Access Point
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(AP_SSID, AP_PASS);
+  WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_HIDDEN, AP_MAX_CONNECTED_STATIONS);
 
   // Begin WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -46,17 +50,34 @@ void setup()
 }
 
 void loop() {
-  if(Serial.available()) {
-    http.begin(client, 
-  }
-  
+  delay(2000);
+//  postToConnectedStations();
+
   server.handleClient();
 }
 
+//void postToConnectedStations(JsonDocument& doc) {
+//  struct station_info *stat_info;
+//  IPAddress address;
+//
+//  stat_info = wifi_softap_get_station_info();
+//
+//  while (stat_info != NULL) {
+//    address = (&stat_info->ip)->addr;
+//
+//    http.begin(client, address);
+//    http.POST(json);
+////    Serial.print(" IP address is = ");
+////    Serial.println(address);
+//
+//    stat_info = STAILQ_NEXT(stat_info, next);
+//  }
+//  Serial.println();
+//}
 
 
 void onReceiveStateRequest(BoardStateRequestType type) {
-//  Serial.write(type);
+  //  Serial.write(type);
   server.send(200, "text/plain", "");
 }
 
