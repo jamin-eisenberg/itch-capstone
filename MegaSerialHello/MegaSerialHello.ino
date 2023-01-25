@@ -5,7 +5,7 @@ char buffer[50];
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  Serial1.begin(9600);
+  Serial2.begin(9600);
   Serial.println("sup");
 
 //  delay(1000);
@@ -24,7 +24,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 //    if (Serial1.available()) {
-      sprintf(buffer, "ESP said %s", Serial1.readStringUntil("o"));
+      sprintf(buffer, "ESP said %c", Serial2.read());
       Serial.println(buffer);
 //    }
 }

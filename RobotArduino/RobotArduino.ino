@@ -13,7 +13,6 @@ void setup() {
 
 void loop() {
   if (Serial1.available()) {
-    Serial.println("Receiving message");
     StaticJsonDocument<96> doc;
 
     DeserializationError error = deserializeJson(doc, Serial1);
@@ -40,6 +39,7 @@ void onReceiveCommand(JsonDocument& doc) {
 void onRobotDone() {
   StaticJsonDocument<64> doc;
   loadSensorData(doc);
+  serializeJson(doc, Serial);
   serializeJson(doc, Serial1);
 }
 

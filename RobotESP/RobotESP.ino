@@ -3,6 +3,11 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 
+// WIRING for mega:
+// ESP -> Arduino
+// D4 -> Rx1 
+// D7 -> Tx1
+
 // Set WiFi credentials
 //#define WIFI_SSID "red-board"
 #define WIFI_SSID "itch"
@@ -30,15 +35,30 @@ void setup() {
   Serial.print("\nIP address: ");
   Serial.println(WiFi.localIP());
 
+  Serial.swap();
+
   server.on("/", HTTP_POST, handleIncomingCommand);
   server.begin();
 }
 
 void loop() {
-  if(Serial1.available()) {
-    
+  if (Serial.available()) {
+    StaticJsonDocument<128> doc;
+
+    DeserializationError error = deserializeJson(doc, Serial);
+
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.f_str());
+      server.send(500, "text/plain", "robot sent invalid JSON response");
+      return;
+    }
+
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    server.send(200, "application/json", jsonStr);
   }
-  
+
   server.handleClient();
 }
 
@@ -71,8 +91,6 @@ void handleIncomingCommand() {
     return;
   }
 
-  Serial.print("Sending doc over with name: ");
-  Serial.println((String) doc["name"]);
-//  serializeJson(doc, Serial);
+  serializeJson(doc, Serial);
   serializeJson(doc, Serial1);
 }
