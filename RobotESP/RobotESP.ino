@@ -9,8 +9,8 @@
 // D7 -> Tx1
 
 // Set WiFi credentials
-//#define WIFI_SSID "red-board"
-#define WIFI_SSID "itch"
+#define WIFI_SSID "red-board"
+//#define WIFI_SSID "itch"
 #define WIFI_PASS "capstone"
 
 bool robotEnabled = true;
@@ -35,7 +35,7 @@ void setup() {
   Serial.print("\nIP address: ");
   Serial.println(WiFi.localIP());
 
-  Serial.swap();
+//  Serial.swap();
 
   server.on("/", HTTP_POST, handleIncomingCommand);
   server.begin();
@@ -69,6 +69,9 @@ void handleIncomingCommand() {
   }
 
   String incoming = server.arg("plain");
+  Serial.print("Incoming message: ");
+  Serial.println(incoming);
+  
   StaticJsonDocument<128> doc;
 
   DeserializationError error = deserializeJson(doc, incoming);

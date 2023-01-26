@@ -31,6 +31,8 @@ enum BoardStateRequestType {
 
 void onReceiveStateRequest(BoardStateRequestType type);
 void onReceiveEnabledMsg(bool enable);
+void serverSetup();
+void registerWithConsoleHost();
 
 void setup()
 {
@@ -51,28 +53,68 @@ void setup()
 
 void loop() {
   delay(2000);
-//  postToConnectedStations();
+
+  StaticJsonDocument<64> doc;
+
+  doc["name"] = "move forward";
+  doc["argument"] = 123;
+  
+  postToConnectedClient(doc);
 
   server.handleClient();
 }
 
-//void postToConnectedStations(JsonDocument& doc) {
+
+void postToConnectedClient(JsonDocument& doc) {
+
+  struct station_info *stat_info;
+
+  struct ip4_addr *IPaddress;
+  IPAddress address;
+
+  stat_info = wifi_softap_get_station_info();
+
+  while (stat_info != NULL) {
+
+    IPaddress = &stat_info->ip;
+    address = IPaddress->addr;
+
+    Serial.print("Posting JSON payload ");
+    serializeJson(doc, Serial);
+    Serial.print(" to server ");
+    String url = "http://" + address.toString();
+    Serial.println(url);
+
+    http.begin(client, url);
+    http.addHeader("Content-Type", "application/json");
+    String json;
+    serializeJson(doc, json);
+    http.POST(json);
+
+    stat_info = STAILQ_NEXT(stat_info, next);
+  }
+}
+
+//void getConnectedStation() {
 //  struct station_info *stat_info;
+//
+//  //  while (stat_info != NULL) {
+//  // just get the first IP address, there should only be one
+//  struct ip4_addr *IPaddress;
 //  IPAddress address;
 //
 //  stat_info = wifi_softap_get_station_info();
 //
-//  while (stat_info != NULL) {
-//    address = (&stat_info->ip)->addr;
+//  IPaddress = &stat_info->ip;
+//  address = IPaddress->addr;
 //
-//    http.begin(client, address);
-//    http.POST(json);
-////    Serial.print(" IP address is = ");
-////    Serial.println(address);
 //
-//    stat_info = STAILQ_NEXT(stat_info, next);
-//  }
-//  Serial.println();
+//  Serial.print(" IP adress is = ");
+//  Serial.print((address));
+//
+//
+//  //    stat_info = STAILQ_NEXT(stat_info, next);
+//  //  }
 //}
 
 
