@@ -37,8 +37,8 @@ void registerWithConsoleHost();
 void setup()
 {
   // Setup serial port
-  Serial.begin(115200);
-  Serial.println();
+  Serial.begin(9600);
+  Serial1.begin(9600);
 
   // Begin Access Point
   WiFi.mode(WIFI_AP_STA);
@@ -49,17 +49,24 @@ void setup()
 
   serverSetup();
   registerWithConsoleHost();
+
+//  Serial.swap();
 }
 
 void loop() {
-  delay(2000);
+  if (Serial.available()) {
+    StaticJsonDocument<128> doc;
 
-  StaticJsonDocument<64> doc;
+    DeserializationError error = deserializeJson(doc, Serial);
 
-  doc["name"] = "move forward";
-  doc["argument"] = 123;
-  
-  postToConnectedClient(doc);
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.f_str());
+      return;
+    }
+
+    postToConnectedClient(doc);
+  }
 
   server.handleClient();
 }
@@ -73,6 +80,10 @@ void postToConnectedClient(JsonDocument& doc) {
   IPAddress address;
 
   stat_info = wifi_softap_get_station_info();
+
+  Serial.print("Received JSON from board: ");
+  serializeJson(doc, Serial);
+  Serial.println();
 
   while (stat_info != NULL) {
 
@@ -89,33 +100,12 @@ void postToConnectedClient(JsonDocument& doc) {
     http.addHeader("Content-Type", "application/json");
     String json;
     serializeJson(doc, json);
-    http.POST(json);
+    Serial.print("Received server response: ");
+    Serial.println(http.POST(json));
 
     stat_info = STAILQ_NEXT(stat_info, next);
   }
 }
-
-//void getConnectedStation() {
-//  struct station_info *stat_info;
-//
-//  //  while (stat_info != NULL) {
-//  // just get the first IP address, there should only be one
-//  struct ip4_addr *IPaddress;
-//  IPAddress address;
-//
-//  stat_info = wifi_softap_get_station_info();
-//
-//  IPaddress = &stat_info->ip;
-//  address = IPaddress->addr;
-//
-//
-//  Serial.print(" IP adress is = ");
-//  Serial.print((address));
-//
-//
-//  //    stat_info = STAILQ_NEXT(stat_info, next);
-//  //  }
-//}
 
 
 void onReceiveStateRequest(BoardStateRequestType type) {
