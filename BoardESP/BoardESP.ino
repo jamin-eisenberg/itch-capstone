@@ -16,7 +16,9 @@
 #define AP_HIDDEN 0
 #define AP_MAX_CONNECTED_STATIONS 1
 
-#define CONSOLE_HOST_NAME "consolehost:5000"
+#define CONSOLE_HOST_PORT_STR ":5000"
+IPAddress consolehostIP;
+
 
 ESP8266WebServer server(80);
 
@@ -45,12 +47,13 @@ void setup()
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_HIDDEN, AP_MAX_CONNECTED_STATIONS);
 
   // Begin WiFi
+  WiFi.hostname(AP_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   serverSetup();
   registerWithConsoleHost();
 
-//  Serial.swap();
+  //  Serial.swap();
 }
 
 void loop() {

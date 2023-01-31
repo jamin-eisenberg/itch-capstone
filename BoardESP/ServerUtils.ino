@@ -22,7 +22,10 @@ void serverSetup() {
   Serial.print("IP address for network ");
   Serial.print(AP_SSID);
   Serial.print(" : ");
-  Serial.print(WiFi.softAPIP());
+  Serial.println(WiFi.softAPIP());
+  WiFi.hostByName("consolehost.mshome.net", consolehostIP);
+  Serial.print("Console host IP: ");
+  Serial.println(consolehostIP);
 
   server.on("/", HTTP_GET, getFullBoardState);
   server.on("/", HTTP_PATCH, updateEnabledStatus);
@@ -32,9 +35,9 @@ void serverSetup() {
 
 void registerWithConsoleHost() {
   Serial.println("Registering with Console Host.");
-  Serial.println("POSTing to URL: http://" CONSOLE_HOST_NAME "/boards/" AP_SSID);
-  http.begin(client, "http://" CONSOLE_HOST_NAME "/boards/" AP_SSID);
-//  http.setTimeout(10000); // give it 10 secs
+  Serial.println("POSTing to URL: http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
+  http.begin(client, "http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
+  //  http.setTimeout(10000); // give it 10 secs
   http.addHeader("Content-Type", "text/plain");
   int httpCode = http.POST("http://" + WiFi.localIP().toString());
 
