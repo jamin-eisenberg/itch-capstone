@@ -27,7 +27,7 @@ void serverSetup() {
   Serial.print("Console host IP: ");
   Serial.println(consolehostIP);
 
-  server.on("/", HTTP_GET, getFullBoardState);
+  server.on("/", HTTP_GET, onReceiveStateRequest);
   server.on("/", HTTP_PATCH, updateEnabledStatus);
   server.onNotFound(handleNotFound);
   server.begin();

@@ -1,7 +1,3 @@
-void getFullBoardState() {
-  onReceiveStateRequest(FULL_STATE);
-}
-
 void updateEnabledStatus() {
   String enabledArg = server.arg(0);
   enabledArg.toLowerCase();

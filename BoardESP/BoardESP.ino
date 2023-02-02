@@ -25,13 +25,7 @@ ESP8266WebServer server(80);
 WiFiClient client;
 HTTPClient http;
 
-enum BoardStateRequestType {
-  FULL_STATE,
-  ACTIONABLE_BLOCK
-};
-
-
-void onReceiveStateRequest(BoardStateRequestType type);
+void onReceiveStateRequest();
 void onReceiveEnabledMsg(bool enable);
 void serverSetup();
 void registerWithConsoleHost();
@@ -53,12 +47,12 @@ void setup()
   serverSetup();
   registerWithConsoleHost();
 
-  //  Serial.swap();
+  Serial.swap();
 }
 
 void loop() {
   if (Serial.available()) {
-    StaticJsonDocument<128> doc;
+    StaticJsonDocument<2000> doc;
 
     DeserializationError error = deserializeJson(doc, Serial);
 
@@ -68,7 +62,15 @@ void loop() {
       return;
     }
 
-    postToConnectedClient(doc);
+    if (doc["inactivity duration"] == NULL) {
+      Serial.println("Received next robot command");
+      postToConnectedClient(doc);
+    } else {
+//      Serial.println("Received full board state");
+      String json;
+      serializeJson(doc, json);
+      server.send(200, "application/json", json);
+    }
   }
 
   server.handleClient();
@@ -84,29 +86,29 @@ String postToConnectedClient(JsonDocument& doc) {
 
   stat_info = wifi_softap_get_station_info();
 
-  Serial.print("Received JSON from board: ");
-  serializeJson(doc, Serial);
-  Serial.println();
+  //  Serial.print("Received JSON from board: ");
+  //  serializeJson(doc, Serial);
+  //  Serial.println();
 
   while (stat_info != NULL) {
 
     IPaddress = &stat_info->ip;
     address = IPaddress->addr;
 
-    Serial.print("Posting JSON payload ");
+    //    Serial.print("Posting JSON payload ");
     serializeJson(doc, Serial);
-    Serial.print(" to server ");
+    //    Serial.print(" to server ");
     String url = "http://" + address.toString();
-    Serial.println(url);
+    //    Serial.println(url);
 
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
     String json;
     serializeJson(doc, json);
-    Serial.print("Received server response: ");
+    //    Serial.print("Received server response: ");
     int statusCode = http.POST(json);
-    Serial.println(statusCode);
-    Serial.println(http.getString());
+    //    Serial.println(statusCode);
+    //    Serial.println(http.getString());
 
     char buffer[50];
     sprintf(buffer, "%d: %s", statusCode, http.getString().c_str());
@@ -117,9 +119,10 @@ String postToConnectedClient(JsonDocument& doc) {
 }
 
 
-void onReceiveStateRequest(BoardStateRequestType type) {
-  //  Serial.write(type);
-  server.send(200, "text/plain", "");
+void onReceiveStateRequest() {
+//  Serial.println("recevied full state request");
+  Serial.write(1); // just trigger the board arduino (void message)
+  Serial1.write(1); // just trigger the board arduino (void message)
 }
 
 void onReceiveEnabledMsg(bool enable) {

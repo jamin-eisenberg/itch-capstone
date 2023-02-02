@@ -1,12 +1,6 @@
 #include <ArduinoJson.h>
 
-enum BoardStateRequestType {
-  FULL_STATE,
-  ACTIONABLE_BLOCK
-};
-
-void onReceiveStateRequest(BoardStateRequestType type);
-void getState(BoardStateRequestType type, JsonDocument& doc);
+void getState();
 
 void setup() {
   Serial.begin(9600);
@@ -23,28 +17,32 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    onReceiveStateRequest((BoardStateRequestType) Serial.read());
+  if (Serial1.available() > 0) {
+    while (Serial1.available() > 0) {
+      Serial1.read();
+    }
+    getState();
   }
 }
 
-void onReceiveStateRequest(BoardStateRequestType type) {
-  DynamicJsonDocument doc(1536);
-  getState(type, doc);
-  serializeJson(doc, Serial);
-}
 
-void getState(BoardStateRequestType type, JsonDocument& doc) {
-  // example:
-  JsonObject doc_0 = doc.createNestedObject();
-  doc_0["type"] = "statement";
-  doc_0["name"] = "move backward";
-  doc_0["argument"] = 255;
+void getState() {
+  StaticJsonDocument<2000> doc; // CHANGE SIZE
 
-  // TODO fill with actual board state data
-  if (type == FULL_STATE) {
+  JsonObject root = doc.to<JsonObject>();
+  JsonArray state = root.createNestedArray("state");
 
-  } else {
+  JsonObject block1 = state.createNestedObject();
+  block1["type"] = "conditional";
+  block1["name"] = "if";
+  block1["argument"] = "isBlue";
 
-  }
+  JsonObject block2 = state.createNestedObject();
+  block2["type"] = "statement";
+  block2["name"] = "move backward";
+  block2["argument"] = 213;
+
+  root["inactivity duration"] = 2311;
+  serializeJson(root, Serial);
+  serializeJson(root, Serial1);
 }
