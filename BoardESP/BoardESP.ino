@@ -75,7 +75,7 @@ void loop() {
 }
 
 
-void postToConnectedClient(JsonDocument& doc) {
+String postToConnectedClient(JsonDocument& doc) {
 
   struct station_info *stat_info;
 
@@ -104,7 +104,13 @@ void postToConnectedClient(JsonDocument& doc) {
     String json;
     serializeJson(doc, json);
     Serial.print("Received server response: ");
-    Serial.println(http.POST(json));
+    int statusCode = http.POST(json);
+    Serial.println(statusCode);
+    Serial.println(http.getString());
+
+    char buffer[50];
+    sprintf(buffer, "%d: %s", statusCode, http.getString().c_str());
+    return buffer;
 
     stat_info = STAILQ_NEXT(stat_info, next);
   }
@@ -122,5 +128,7 @@ void onReceiveEnabledMsg(bool enable) {
   doc["name"] = enable ? "enable" : "disable";
   doc["argument"] = nullptr;
 
-  serializeJson(doc, Serial);
+  String msg = postToConnectedClient(doc);
+
+  server.send(200, "text/plain", msg);
 }

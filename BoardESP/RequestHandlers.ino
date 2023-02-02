@@ -8,9 +8,7 @@ void updateEnabledStatus() {
   bool validArg = enabledArg == "true" || enabledArg == "false";
   if (server.args() == 1 && validArg) {
     bool enable = enabledArg == "true";
-    const char* msg = enable ? "Board enable message sent" : "Board disable message sent";
     onReceiveEnabledMsg(enable);
-    server.send(200, "text/plain", msg);
   } else {
     server.send(400, "text/plain", "There should be one argument: enabled=<true or false>");
   }

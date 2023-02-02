@@ -88,6 +88,7 @@ void handleIncomingCommand() {
   }
   if (strcmp(doc["name"], "disable") == 0) {
     robotEnabled = false;
+    server.send(200, "text/plain", "robot disabled");
     doc["name"] = "stop";
   } else if (!robotEnabled) {
     server.send(409, "text/plain", "robot currently disabled");
