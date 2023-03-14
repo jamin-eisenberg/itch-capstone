@@ -186,6 +186,117 @@ String color_identify(uint16_t red, uint16_t green, uint16_t blue)
   }
 }
 
+/**
+ * Move the robot backward
+ * @param distance: the distance backward
+ */
+//NOTE: I understand that I could perform the same functionality
+//using the speedControl function but when I tested run it with the robot
+//this function seems quicker to me.
+void backward(int distance)
+{
+  digitalWrite(RIGHT_DIR_1, LOW);
+  digitalWrite(RIGHT_DIR_2, HIGH);
+  digitalWrite(LEFT_DIR_1, LOW);
+  digitalWrite(LEFT_DIR_2, HIGH);
+  analogWrite(RIGHT_EN, 255);
+  analogWrite(LEFT_EN, 255);
+  delay(distance);
+}
+
+//Rotate the robot to a given degree
+//90degree -> 450
+//180 -> 900
+//360 -> 1800
+void rotate(int degree)
+{
+  int delay_time = degree * 5;
+  digitalWrite(RIGHT_DIR_1, LOW);
+  digitalWrite(RIGHT_DIR_2, HIGH);
+  digitalWrite(LEFT_DIR_1, HIGH);
+  digitalWrite(LEFT_DIR_2, LOW);
+  analogWrite(RIGHT_EN, 255);
+  analogWrite(LEFT_EN, 255);
+  delay(delay_time);
+}
+
+/**
+ * Stop the robot for a given amount of time
+ * @param sec: the amount of second to stop 
+ */
+void stopRobot(int sec)
+{
+  digitalWrite(RIGHT_DIR_1, LOW);
+  digitalWrite(RIGHT_DIR_2, LOW);
+  digitalWrite(LEFT_DIR_1, LOW);
+  digitalWrite(LEFT_DIR_2, LOW);
+  analogWrite(RIGHT_EN, 0);
+  analogWrite(LEFT_EN, 0);
+  delay(sec);
+}
+
+/**
+ * Move the robot forward
+ * @param distance: the distance forward
+ */
+void forward(int distance)
+{
+  digitalWrite(RIGHT_DIR_1, HIGH);
+  digitalWrite(RIGHT_DIR_2, LOW);
+  digitalWrite(LEFT_DIR_1, HIGH);
+  digitalWrite(LEFT_DIR_2, LOW);
+  analogWrite(RIGHT_EN, 255);
+  analogWrite(LEFT_EN, 255);
+  delay(distance);
+}
+
+//Control the robot using command from board
+//Right now, this is getting input from Serial not the actual board
+//Current commands : move forward, backward, rotate,stop
+//TODO: Add hook up, hook down command
+void boardControl()
+{
+  if (Serial.available() > 0)
+  {
+    value = Serial.read();
+    Serial.println(value);
+  }
+  //Get move distance from user
+  int move_distance = 500;
+  int rotate_degree = 180;
+  int sec = 500;
+
+  if (value == "forward")
+  {
+    forward(move_distance);
+  }
+  else if (value == "backward")
+  {
+    backward(move_distance);
+  }
+
+  else if (value == "rotate")
+  {
+    rotate(rotate_degree);
+  }
+  else if (value == "stop")
+  {
+    stopRobot(sec);
+  }
+  else if (value == "hookup")
+  {
+    setHook(true);
+  }
+  else if (value == "hookdown")
+  {
+    setHook(false);
+  }
+  else
+  {
+    Serial.println("Invalid command");
+  }
+}
+
 /**************************************************************************************
  * Arduino Setup and Loop functions
  **************************************************************************************/
@@ -211,6 +322,18 @@ void setup()
 
   Wire.begin();
   Serial.begin(9600);
+
+  //Test functionality
+
+  //rotate 360deg
+  rotate(360);
+  //stop for 5s
+  stopRobot(500);
+  //go forward
+  forward(500);
+  stopRobot(500);
+  backward(500);
+  stopRobot(500);
 
   while (!Serial)
   {
@@ -245,6 +368,8 @@ void loop()
   colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
   lux = tcs.calculateLux(r, g, b);
 
+  String color_name = color_identify(r, g, b);
+
   Serial.print("Color Temp: ");
   Serial.print(colorTemp, DEC);
   Serial.print(" K - ");
@@ -252,7 +377,7 @@ void loop()
   Serial.print(lux, DEC);
   Serial.print(" - ");
   Serial.print("R: ");
-  Serial.print(r, DEC);
+  Serial.print(r);
   Serial.print(" ");
   Serial.print("G: ");
   Serial.print(g, DEC);
@@ -264,4 +389,5 @@ void loop()
   Serial.print(c, DEC);
   Serial.print(" ");
   Serial.println(" ");
+  Serial.println(color_name);
 }
