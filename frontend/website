@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+
+    <!-- Setting the pages character encoding -->
+    <meta charset="UTF-8">
+
+    <!-- The meta viewport will scale my content to any device width -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Link to my stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <title>Print JSON as Table in HTML</title>
+
+  </head>
+  &nbsp&nbsp<h1 style="text-align: center;">Teacher Console</h2>
+  <body>
+    <table id="myTable">
+      <thead>
+        <tr>
+          <tr><th>Board #1</th></tr>
+          <th>Type</th>
+          <th>Name</th>
+          <th>Argument</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const myObj = {
+        "state": [
+          {
+            "type": "loop",
+            "name": "until",
+            "argument": "close to wall"
+          },
+          {
+            "type": "statement",
+            "name": "move forward",
+            "argument": "1"
+          },
+          {
+            "type": "closing",
+            "name": "}",
+            "argument": null
+          },
+          {
+            "type": "conditional",
+            "name": "if",
+            "argument": "red"
+          },
+          {
+            "type": "statement",
+            "name": "rotate right",
+            "argument": "90"
+          },
+          {
+            "type": "closing",
+            "name": "}",
+            "argument": "null"
+          },
+          {
+            "type": "conditional",
+            "name": "if",
+            "argument": "green"
+          },
+          {
+            "type": "statement",
+            "name": "rotate left",
+            "argument": "-90"
+          },
+          {
+            "type": "statement",
+            "name": "hook down",
+            "argument": null
+          },
+          {
+            "type": "closing",
+            "name": "}",
+            "argument": null
+          },
+          {
+            "type": "conditional",
+            "name": "if",
+            "argument": "blue"
+          },
+          {
+            "type": "statement",
+            "name": "hook down",
+            "argument": "null"
+          },
+          {
+            "type": "statement",
+            "name": "move backward",
+            "argument": "2"
+          },
+          {
+            "type": "statement",
+            "name": "hook up",
+            "argument": null
+          },
+          {
+            "type": "statement",
+            "name": "move forward",
+            "argument": "3"
+          },
+          {
+            "type": "closing",
+            "name": "}",
+            "argument": null
+          }
+        ]
+      };
+
+      const tableBody = document.querySelector("#myTable tbody");
+      myObj.state.forEach((state) => {
+        const row = tableBody.insertRow();
+        const typeCell = row.insertCell(0);
+        const nameCell = row.insertCell(1);
+        const argCell = row.insertCell(2);
+        typeCell.innerHTML = state.type;
+        nameCell.innerHTML = state.name;
+        argCell.innerHTML = state.argument;
+      });
+    </script>
+  </body>
+</html>
