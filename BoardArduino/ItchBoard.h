@@ -49,6 +49,7 @@ class ItchBoard {
    * Identify the next block on the board.
    */
   ItchBlock identifyBlock(int row) {
+    digitalWrite(row, HIGH);
     int Vin = 5;
     float R1 = 22000;
     int raw = analogRead(row);
@@ -57,99 +58,71 @@ class ItchBoard {
       int Vout = (buffer)/1024.0;
       buffer = (Vin/Vout) - 1;
       int R2= R1 * buffer;
-      if(R2 <= 950) {
-        if(R2 <= 650) {
-          return ItchBlock(BlockType::REPEAT_TIMES, BlockType::NUMBER, 1);
-        }
-        else if(R2 <= 750) {
-          return ItchBlock(BlockType::REPEAT_TIMES, BlockType::NUMBER, 2);
-        }
-        else if(R2 <= 850) {
-          return ItchBlock(BlockType::REPEAT_TIMES, BlockType::NUMBER, 3);
-        }
-        else if(R2 <= 950) {
-          return ItchBlock(BlockType::REPEAT_TIMES, BlockType::NUMBER, 4);
-        }
+      if(R2 <= 50) {
+        return ItchBlock(BlockType::HOOK_UP);
       }
-      else if(R2 <= 1450) {
-        if(R2 <= 1150) {
+      if(R2 <= 270) {
+        return ItchBlock(BlockType::END_CONTROL);
+      }
+      else if(R2 <= 520) {
+        return ItchBlock(BlockType::HOOK_DOWN);
+      }
+      else if(R2 <= 2100) {
+        return ItchBlock(BlockType::ROTATE, BlockType::ROTATION_AMOUNT, R2 - 1000);
+      }
+      else if(R2 <= 3500) {
+        if(R2 <= 3250) {
           return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 1);
         }
-        else if(R2 <= 1250) {
+        else if(R2 <= 3350) {
           return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 2);
         }
-        else if(R2 <= 1350) {
+        else {
           return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 3);
         }
-        else if(R2 <= 1450) {
-          return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 4);
-        }
       }
-      else if(R2 <= 1950) {
-        if(R2 <= 1650) {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 1);
-        }
-        else if(R2 <= 1750) {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 2);
-        }
-        else if(R2 <= 1850) {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 3);
-        }
-        else if(R2 <= 1950) {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 4);
-        }
-      }
-      else if(R2 <= 2450) {
-        if(R2 <= 2150) {
+      else if(R2 <= 5100) {
+        if(R2 <= 4750) {
           return ItchBlock(BlockType::IF, BlockType::CONDITION, CLOSE_TO_WALL);
         }
-        else if(R2 <= 2250) {
+        else if(R2 <= 4850) {
           return ItchBlock(BlockType::IF, BlockType::CONDITION, IS_RED);
         }
-        else if(R2 <= 2350) {
+        else if(R2 <= 5000) {
           return ItchBlock(BlockType::IF, BlockType::CONDITION, IS_GREEN);
         }
-        else if(R2 <= 2450) {
+        else {
           return ItchBlock(BlockType::IF, BlockType::CONDITION, IS_BLUE);
         }
       }
-      else if(R2 <= 2950) {
-        if(R2 <= 2650) {
+      else if(R2 <= 6000) {
+        if(R2 <= 5750) {
+          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 1);
+        }
+        else if(R2 <= 5850) {
+          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 2);
+        }
+        else {
+          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 3);
+        }
+      }
+      else if(R2 <= 9800) {
+        if(R2 <= 9450) {
           return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, CLOSE_TO_WALL);
         }
-        else if(R2 <= 2750) {
+        else if(R2 <= 9550) {
           return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, IS_RED);
         }
-        else if(R2 <= 2850) {
+        else if(R2 <= 9700) {
           return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, IS_GREEN);
         }
-        else if(R2 <= 2950) {
+        else {
           return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, IS_BLUE);
         }
       }
-      else if(R2 <= 4500) {
-        return ItchBlock(BlockType::STOP);
-      }
-      else if(R2 <= 5500) {
-        return ItchBlock(BlockType::HOOK_UP);
-      }
-      else if(R2 <= 6500) {
-        return ItchBlock(BlockType::HOOK_DOWN);
-      }
-      else if(R2 <= 7500) {
-        return ItchBlock(BlockType::OTHERWISE);
-      }
-      else if(R2 <= 8500) {
-        return ItchBlock(BlockType::FOREVER);
-      }
-      else if(R2 <= 9500) {
-        return ItchBlock(BlockType::END_CONTROL);
-      }
-      else if(R2 <= 21000) {
-        return ItchBlock(BlockType::ROTATE, BlockType::ROTATION_AMOUNT, R2);
-      }
     }
-    return ItchBlock(BlockType::UNKNOWN_BLOCK); 
+    digitalWrite(row, LOW);
+    return ItchBlock(BlockType::NONE); 
   }
   
   /**
