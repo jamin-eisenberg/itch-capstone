@@ -49,11 +49,11 @@ const int ECHO_PIN = 6;
 const int TRIG_PIN = 7;
 // Using the speed of sound at 50% humidity and 20 degrees C, cm/us.
 const double SOUND_SPEED_CONSTANT = 0.0344;
-const double WALL_THRESHOLD = 8.0; // TODO: Tweak and use in code
+const double WALL_THRESHOLD = 8.0;
 // Servo pin and hook constants.
 const int SERVO_PIN = 9;
-const int HOOK_MIN = 125;
-const int HOOK_MAX = 255;
+const int HOOK_MIN = 0;
+const int HOOK_MAX = 100;
 const bool HOOK_UP = true;
 // Motor A connections
 const int RIGHT_EN = 10;
@@ -104,10 +104,11 @@ void onRobotDone();
 void colorIdentify(SensorData &data){
   float red, green, blue;
   tcs.getRGB(&red, &green, &blue);
+  float lux = tcs.calculateLux(red, green, blue);
   
-  data.isRed = (red >= 150);
-  data.isGreen = (green >= 150);
-  data.isBlue = (blue >= 150);
+  data.isRed = (red >= 120 && lux <= 30);
+  data.isGreen = (green >= 120 && lux >= 120);
+  data.isBlue = (blue >= 100);
 }
 
 
@@ -116,7 +117,8 @@ void colorIdentify(SensorData &data){
  */
 SensorData getSensorData() {
   SensorData data;
-  data.closeToWall = readUltrasonicDistance() < WALL_THRESHOLD;
+  auto distanceToWall = readUltrasonicDistance();
+  data.closeToWall = (distanceToWall >= 0 && distanceToWall < WALL_THRESHOLD);
   colorIdentify(data);
   return data;
 }
@@ -166,17 +168,17 @@ void stopMotor(Side motor) {
   speedControl(motor, 0);
 }
 
-int hookPos = 0;
+int hookPos = HOOK_MIN;
 void setHook(bool hookUp) {
   int dir = -1;
   if (hookUp)
     dir = 1;
-  if (hookPos == 0) {
+  if (hookPos == HOOK_MIN) {
     hookPos++;
-  } else if (hookPos == 255) {
+  } else if (hookPos == HOOK_MAX) {
     hookPos--;
   }
-  for (; (hookPos < 255) && (hookPos > 0); hookPos += dir) {
+  for (; (hookPos < HOOK_MAX) && (hookPos > HOOK_MIN); hookPos += dir) {
     analogWrite(SERVO_PIN, hookPos); 
     delay(10);
   }
@@ -186,13 +188,14 @@ void setHook(bool hookUp) {
  * Main Setup and Loop functions
  **************************************************************************************/
 
-// TODO change Serial1 to Serial and remove debug output
-
 void setup() {
   Wire.begin();
   Serial.begin(9600);
-  Serial1.begin(9600);
   while(!Serial) {}
+
+  // Set Ultrasonic sensor pin modes
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
 
   // Set all the motor control pins to outputs
   pinMode(RIGHT_EN, OUTPUT);
@@ -210,26 +213,21 @@ void setup() {
   stopMotor(BOTH);
   
   /* Configures TSL2550 (RGB sensor) with Extended Range */
-  if (tcs.begin()) {
-    Serial.println("Found sensor");
-  } else {
-    Serial.println("No TCS34725 found ... check your connections");
-    while (1);
-  }
+  tcs.begin();
 }
 
 void loop() {
-  if (Serial1.available()) {
     StaticJsonDocument<96> doc;
 
-    DeserializationError error = deserializeJson(doc, Serial1);
+    DeserializationError error = deserializeJson(doc, Serial);
 
     if (!error) {
       onReceiveCommand(doc);
     } else {
-      Serial.println(error.c_str());
+//      Serial.println(error.c_str());
     }
   }
+
   stopTimer.tick();
 }
 
@@ -238,7 +236,6 @@ void loop() {
  **************************************************************************************/
 
 void onReceiveCommand(JsonDocument& doc) {
-  serializeJson(doc, Serial);
   ItchBlock b = doc.as<ItchBlock>();
   stopTimer.cancel(); // Kill any existing timer and stop motors.
   stopMotor(BOTH);
@@ -275,5 +272,4 @@ void onRobotDone() {
   StaticJsonDocument<64> doc;
   doc = getSensorData();
   serializeJson(doc, Serial);
-  serializeJson(doc, Serial1);
 }
