@@ -1,16 +1,40 @@
 <!DOCTYPE html>
 <html>
-<body>
+    <head>
+        <title>Print JSON in HTML</title>
+    </head>
+    <h2 style="text-align: center;">Teacher Console</h2>
+    <body>
+        <div id="myData"></div>
+        
+        <script>
+        
+            /** In this example, the myBoards JSON object is first parsed using
+             * JSON.stringify function to convert the object into a JSON string.
+             * The pre element is used to preserve whitespace and display the
+             * JSON data in a formatted way. The myDataDiv is a div element in 
+             * the HTML that will display the JSON data. **/
 
-<p>Click the button to open a new browser window.</p>
+            // Example HTTP Get Request output in JSON object form
+            const myBoards = {
+            "inactivity-duration": 10000,
+            "state": [ {
+                "type": "statement",
+                "name": "stop",
+                "argument": null
+            } ]
+            };
 
-<button onclick="myFunction()">Try it</button>
+            /** The JSON.stringify function takes three parameters: the JSON object
+             to be converted to a string, a replacer function that can be used to
+            filter and manipulate the JSON data, and the number of spaces to use
+            for indentation. In this case, null is passed as the second parameter
+            to include all properties of the object and 2 is passed as the third
+            parameter to use two spaces for indentation. **/
 
-<script>
-function myFunction() {
-  window.open("http://localhost:3000/");
-}
-</script>
-
-</body>
+            const myDataDiv = document.getElementById("myData");
+            myDataDiv.innerHTML = "<pre>" + JSON.stringify(myBoards, null, 2) + "</pre>";
+      
+        </script>
+    </body>
 </html>
