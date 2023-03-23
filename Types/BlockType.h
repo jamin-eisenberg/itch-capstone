@@ -13,7 +13,7 @@
  * Names of each block/block type, used in serialization.
  */
 const char* blockNames[] = {
-  "parameter"
+  "parameter",
   "rotate",
   "repeat",
   "move forward",

@@ -47,6 +47,16 @@ void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
 
+  for (int row = A0; row <= A15; row++) {
+    pinMode(row, INPUT);
+  }
+  for (int row = 38; row < 38 + 16; row++) {
+    pinMode(row, OUTPUT);
+  }
+  pinMode(STOP_BUTTON, INPUT);
+  pinMode(GO_BUTTON, INPUT);
+  pinMode(GO_FOREVER_BUTTON, INPUT);
+
   itchBoard = ItchBoard();
   state = {false, false, false};
 }

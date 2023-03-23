@@ -37,11 +37,12 @@ class ItchBoard {
    * Flash the light on one of the rows to indicate that an error has occured.
    */
   void errorOnRow(int row) {
+    int digitalRow = row + 38;
     for (int i = 0; i < 10; i++) {
       delay(500);
-      digitalWrite(row, HIGH);
+      digitalWrite(digitalRow, HIGH);
       delay(500);
-      digitalWrite(row, LOW);
+      digitalWrite(digitalRow, LOW);
     }
   }
 
@@ -49,7 +50,6 @@ class ItchBoard {
    * Identify the next block on the board.
    */
   ItchBlock identifyBlock(int row) {
-    digitalWrite(row, HIGH);
     int Vin = 5;
     float R1 = 22000;
     int raw = analogRead(row);
@@ -83,16 +83,16 @@ class ItchBoard {
       }
       else if(R2 <= 5100) {
         if(R2 <= 4750) {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, CLOSE_TO_WALL);
+          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
         }
         else if(R2 <= 4850) {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, IS_RED);
+          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_RED);
         }
         else if(R2 <= 5000) {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, IS_GREEN);
+          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_GREEN);
         }
         else {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, IS_BLUE);
+          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_BLUE);
         }
       }
       else if(R2 <= 6000) {
@@ -108,20 +108,19 @@ class ItchBoard {
       }
       else if(R2 <= 9800) {
         if(R2 <= 9450) {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, CLOSE_TO_WALL);
+          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
         }
         else if(R2 <= 9550) {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, IS_RED);
+          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_RED);
         }
         else if(R2 <= 9700) {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, IS_GREEN);
+          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_GREEN);
         }
         else {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, IS_BLUE);
+          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_BLUE);
         }
       }
     }
-    digitalWrite(row, LOW);
     return ItchBlock(BlockType::NONE); 
   }
   
