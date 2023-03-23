@@ -1,5 +1,5 @@
 /**************************************************************************************
- * Library Declarations
+   Library Declarations
  **************************************************************************************/
 
 #include <ArduinoJson.h>
@@ -10,9 +10,9 @@
 #include "Adafruit_TCS34725.h"
 
 /**************************************************************************************
- * Data Structures
+   Data Structures
  **************************************************************************************/
- 
+
 // Which Side of the robot you are referencing, oriented as looking from hook to pusher.
 enum Side {
   RIGHT = 0b01,
@@ -21,26 +21,26 @@ enum Side {
 };
 
 /**************************************************************************************
- * Global Variables
+   Global Variables
  **************************************************************************************/
 
 /* Initialise with specific int time and gain values */
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
-Timer<1, micros> stopTimer{};
+Timer<1, micros> stopTimer;
 
 /**************************************************************************************
- * Constants
+   Constants
  **************************************************************************************/
 // NOTE: Pins are not freely chosen. Analog 4 and 5 are used for the I2C protocol (see Wire library),
 //    and the motor enable pins and servo pin need to be PWM pins, which the nano only has a handful of.
 //    Everything else can be moved around.
 
 // These will go away when I get around to using the IR encoder and a better controller
-#define ROBOT_SPEED 190
-#define ROBOT_TURN_SPEED 200
-#define NUMBER_TO_MOVE_TIME 50
-#define NUMBER_TO_ROTATION_DELAY 30
- 
+#define ROBOT_SPEED 225 
+#define ROBOT_TURN_SPEED 225
+#define NUMBER_TO_MOVE_TIME 500000L
+#define NUMBER_TO_ROTATION_DELAY 3000L
+
 // IR sensors for motor encoder, pins and constants
 const int LEFT_IR_PIN = A1;
 const int RIGHT_IR_PIN = A2;
@@ -65,47 +65,47 @@ const int LEFT_DIR_1 = 4;
 const int LEFT_DIR_2 = 5;
 
 /**************************************************************************************
- * Function forward declarations
+   Function forward declarations
  **************************************************************************************/
 
 void onReceiveCommand(JsonDocument& doc);
 void onRobotDone();
 
 /**************************************************************************************
- * Sensor Helper Functions
+   Sensor Helper Functions
  **************************************************************************************/
 
 /**
- * Read the ultrasonic sensor, scaled roughly to centimeters. It may return -1 if out of range (> 4m or <2cm).
- */
- double readUltrasonicDistance() {
-    float duration, distance;
-    digitalWrite(TRIG_PIN, LOW); 
-    delayMicroseconds(2);
-   
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    
-    duration = pulseIn(ECHO_PIN, HIGH); // Duration of pulse in microseconds
-    distance = (duration / 2) * SOUND_SPEED_CONSTANT;
-    
-    if (distance >= 400 || distance <= 2){
-      return -1; // Out of range
-    }
-    else {
-      return distance;
-    }
- }
+   Read the ultrasonic sensor, scaled roughly to centimeters. It may return -1 if out of range (> 4m or <2cm).
+*/
+double readUltrasonicDistance() {
+  float duration, distance;
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
 
- /**
- * Identify which colors the block sees, and load them into the given data.
- */
-void colorIdentify(SensorData &data){
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  duration = pulseIn(ECHO_PIN, HIGH); // Duration of pulse in microseconds
+  distance = (duration / 2) * SOUND_SPEED_CONSTANT;
+
+  if (distance >= 400 || distance <= 2) {
+    return -1; // Out of range
+  }
+  else {
+    return distance;
+  }
+}
+
+/**
+  Identify which colors the block sees, and load them into the given data.
+*/
+void colorIdentify(SensorData &data) {
   float red, green, blue;
   tcs.getRGB(&red, &green, &blue);
   float lux = tcs.calculateLux(red, green, blue);
-  
+
   data.isRed = (red >= 120 && lux <= 30);
   data.isGreen = (green >= 120 && lux >= 120);
   data.isBlue = (blue >= 100);
@@ -113,8 +113,8 @@ void colorIdentify(SensorData &data){
 
 
 /**
- * Return the sensor data of the robot
- */
+   Return the sensor data of the robot
+*/
 SensorData getSensorData() {
   SensorData data;
   auto distanceToWall = readUltrasonicDistance();
@@ -124,13 +124,13 @@ SensorData getSensorData() {
 }
 
 /**************************************************************************************
- * Actuator Helper Functions
+   Actuator Helper Functions
  **************************************************************************************/
 
 /**
- * Lower level, sets the states for each passed pin according to given motorSpeed.
- *  Use speedControl or stopMotor instead.
- */
+   Lower level, sets the states for each passed pin according to given motorSpeed.
+    Use speedControl or stopMotor instead.
+*/
 void setMotorPins(int dir1, int dir2, int en, int motorSpeed) {
   if (motorSpeed < 0) {
     digitalWrite(dir1, LOW);
@@ -146,24 +146,24 @@ void setMotorPins(int dir1, int dir2, int en, int motorSpeed) {
 }
 
 /**
- * Control speed and direction of an individual motor.
- * @param motor Set to RIGHT, LEFT, or BOTH.
- * @param motorSpeed positive for forward, negative for backward, -255 to 255.
- */
+   Control speed and direction of an individual motor.
+   @param motor Set to RIGHT, LEFT, or BOTH.
+   @param motorSpeed positive for forward, negative for backward, -255 to 255.
+*/
 void speedControl(Side motor, int motorSpeed) {
   int dir1, dir2, enable = 0;
   if (motor & RIGHT) {
     setMotorPins(RIGHT_DIR_1, RIGHT_DIR_2, RIGHT_EN, motorSpeed);
   }
-  if (motor & LEFT){
+  if (motor & LEFT) {
     setMotorPins(LEFT_DIR_1, LEFT_DIR_2, LEFT_EN, motorSpeed);
   }
 }
 
 /**
- * Stop a motor.
- * @param motor Set to RIGHT, LEFT, or BOTH.
- */
+   Stop a motor.
+   @param motor Set to RIGHT, LEFT, or BOTH.
+*/
 void stopMotor(Side motor) {
   speedControl(motor, 0);
 }
@@ -179,19 +179,19 @@ void setHook(bool hookUp) {
     hookPos--;
   }
   for (; (hookPos < HOOK_MAX) && (hookPos > HOOK_MIN); hookPos += dir) {
-    analogWrite(SERVO_PIN, hookPos); 
+    analogWrite(SERVO_PIN, hookPos);
     delay(10);
   }
 }
 
 /**************************************************************************************
- * Main Setup and Loop functions
+   Main Setup and Loop functions
  **************************************************************************************/
 
 void setup() {
   Wire.begin();
   Serial.begin(9600);
-  while(!Serial) {}
+  while (!Serial) {}
 
   // Set Ultrasonic sensor pin modes
   pinMode(TRIG_PIN, OUTPUT);
@@ -209,63 +209,79 @@ void setup() {
   pinMode(SERVO_PIN, OUTPUT);
 
   // Initialize pin values and global vars
-  setHook(false); 
+  setHook(false);
   stopMotor(BOTH);
-  
+
   /* Configures TSL2550 (RGB sensor) with Extended Range */
   tcs.begin();
+
+  stopTimer = Timer<1, micros>();
 }
 
 void loop() {
+  if (Serial.available()) {
     StaticJsonDocument<96> doc;
 
     DeserializationError error = deserializeJson(doc, Serial);
-
     if (!error) {
       onReceiveCommand(doc);
     } else {
-//      Serial.println(error.c_str());
+      Serial.println("ERROR");
+      Serial.println(error.c_str());
     }
   }
-
-  stopTimer.tick();
+  if (!stopTimer.empty()) {
+    stopTimer.tick<void>();
+  }
 }
 
 /**************************************************************************************
- * Communications methods
+   Communications methods
  **************************************************************************************/
+
+bool completeCommand(void*) {
+  stopMotor(BOTH);
+  onRobotDone();
+  return false;
+}
 
 void onReceiveCommand(JsonDocument& doc) {
   ItchBlock b = doc.as<ItchBlock>();
+
   stopTimer.cancel(); // Kill any existing timer and stop motors.
   stopMotor(BOTH);
-  switch(b.block) {
+  switch (b.block) {
     case BlockType::ROTATE:
-      speedControl(RIGHT, -ROBOT_TURN_SPEED);
-      speedControl(LEFT, ROBOT_TURN_SPEED);
-      stopTimer.in(b.argumentValue * NUMBER_TO_ROTATION_DELAY, [](void*) -> bool { stopMotor(BOTH); return false; });
+      {
+        int turnSign = ((b.argumentValue > 0) ? (1) : (-1));
+        speedControl(RIGHT, -ROBOT_TURN_SPEED * turnSign);
+        speedControl(LEFT, ROBOT_TURN_SPEED * turnSign);
+        stopTimer.in(abs(b.argumentValue) * NUMBER_TO_ROTATION_DELAY, completeCommand);
+      }
       break;
     case BlockType::FORWARD:
       speedControl(BOTH, ROBOT_SPEED);
-      stopTimer.in(b.argumentValue * NUMBER_TO_MOVE_TIME, [](void*) -> bool { stopMotor(BOTH); return false; });
+      stopTimer.in(b.argumentValue * NUMBER_TO_MOVE_TIME, completeCommand);
       break;
     case BlockType::BACKWARD:
       speedControl(BOTH, -ROBOT_SPEED);
-      stopTimer.in(b.argumentValue * NUMBER_TO_MOVE_TIME, [](void*) -> bool { stopMotor(BOTH); return false; });
+      stopTimer.in(b.argumentValue * NUMBER_TO_MOVE_TIME, completeCommand);
       break;
     case BlockType::STOP:
       stopMotor(BOTH);
+      onRobotDone();
       break;
     case BlockType::HOOK_UP:
       setHook(true);
+      onRobotDone();
       break;
     case BlockType::HOOK_DOWN:
       setHook(false);
+      onRobotDone();
       break;
     default:
       stopMotor(BOTH);
   }
-  onRobotDone();
 }
 
 void onRobotDone() {
