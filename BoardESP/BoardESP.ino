@@ -30,6 +30,14 @@ void onReceiveEnabledMsg(bool enable);
 void serverSetup();
 void registerWithConsoleHost();
 
+/**
+   Generic HTTP response struct.
+*/
+struct Response {
+  int statusCode;
+  const char* data;
+};
+
 void setup()
 {
   // Setup serial port
@@ -62,13 +70,22 @@ void loop() {
       return;
     }
 
-    if (doc["inactivity duration"] == NULL) {
-      Serial.println("Received next robot command");
-      postToConnectedClient(doc);
+    if (!doc.containsKey("inactivity duration")) {
+      auto response = postToConnectedClient(doc);
+      if (response.statusCode == 200) {
+        Serial.print(response.data);
+        Serial1.print(response.data);
+      } else {
+        Serial.print("Response from client: ");
+        Serial.print(response.statusCode);
+        Serial.print(": ");
+        Serial.println(response.data);
+      }
     } else {
-//      Serial.println("Received full board state");
       String json;
       serializeJson(doc, json);
+      //      Serial.println("Recieved full board state");
+      //      Serial.println(json);
       server.send(200, "application/json", json);
     }
   }
@@ -76,8 +93,7 @@ void loop() {
   server.handleClient();
 }
 
-
-String postToConnectedClient(JsonDocument& doc) {
+Response postToConnectedClient(JsonDocument& doc) {
 
   struct station_info *stat_info;
 
@@ -86,41 +102,42 @@ String postToConnectedClient(JsonDocument& doc) {
 
   stat_info = wifi_softap_get_station_info();
 
-  //  Serial.print("Received JSON from board: ");
-  //  serializeJson(doc, Serial);
-  //  Serial.println();
-
   while (stat_info != NULL) {
 
     IPaddress = &stat_info->ip;
     address = IPaddress->addr;
 
-    //    Serial.print("Posting JSON payload ");
-    serializeJson(doc, Serial);
-    //    Serial.print(" to server ");
     String url = "http://" + address.toString();
-    //    Serial.println(url);
 
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
+    http.setTimeout(10000);
+
     String json;
     serializeJson(doc, json);
-    //    Serial.print("Received server response: ");
-    int statusCode = http.POST(json);
-    //    Serial.println(statusCode);
-    //    Serial.println(http.getString());
+    //    Serial.print("Posting JSON to client: ");
+    //    Serial.println(json);
 
-    char buffer[50];
-    sprintf(buffer, "%d: %s", statusCode, http.getString().c_str());
-    return buffer;
+    int statusCode = http.POST(json);
+    int responseSize = http.getSize();
+
+    if (http.getSize() > 0) {
+      auto res = http.getString().c_str();
+      //      char buffer[responseSize + 10];
+      //      snprintf(buffer, responseSize + 10, "%d: %s", statusCode, res);
+      return Response {statusCode, res};
+    } else {
+      return Response {statusCode, ""};
+    }
 
     stat_info = STAILQ_NEXT(stat_info, next);
   }
+  return Response { -1, "No connected stations found!"};
 }
 
 
 void onReceiveStateRequest() {
-//  Serial.println("recevied full state request");
+  //  Serial.println("recevied full state request");
   Serial.write(1); // just trigger the board arduino (void message)
   Serial1.write(1); // just trigger the board arduino (void message)
 }
@@ -131,7 +148,7 @@ void onReceiveEnabledMsg(bool enable) {
   doc["name"] = enable ? "enable" : "disable";
   doc["argument"] = nullptr;
 
-  String msg = postToConnectedClient(doc);
+  auto msg = postToConnectedClient(doc);
 
-  server.send(200, "text/plain", msg);
+  server.send(200, "text/plain", msg.data);
 }

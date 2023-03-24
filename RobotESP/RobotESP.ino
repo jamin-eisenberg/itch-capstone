@@ -9,7 +9,7 @@
 // D7 -> Tx1
 
 // Set WiFi credentials
-#define WIFI_SSID "itch"
+#define WIFI_SSID "red-board"
 #define WIFI_PASS "capstone"
 
 bool robotEnabled = true;

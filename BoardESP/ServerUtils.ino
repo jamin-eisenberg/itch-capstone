@@ -6,10 +6,18 @@ void serverSetup() {
   // Connecting to WiFi...
   Serial.print("Connecting to ");
   Serial.print(WIFI_SSID);
-  while (WiFi.status() != WL_CONNECTED)
+  int maxWait = 10000;
+  int wait = 0;
+  while (WiFi.status() != WL_CONNECTED && wait < maxWait)
   {
+    wait += 100;
     delay(100);
     Serial.print(".");
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println();
+    Serial.println("Could not connect to Itch! Timeout");
+    return;
   }
 
   // Connected to WiFi
@@ -34,6 +42,10 @@ void serverSetup() {
 }
 
 void registerWithConsoleHost() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Not connected to wiFi, ignoring console host.");
+    return;
+  }
   Serial.println("Registering with Console Host.");
   Serial.println("POSTing to URL: http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
   http.begin(client, "http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
