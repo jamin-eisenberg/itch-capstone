@@ -9,12 +9,12 @@
 #define GO_FOREVER_BUTTON 5
 
 /**
- * Structs used only in this file.
- */
+   Structs used only in this file.
+*/
 
 /**
- * The runstate of the board; fetchNext logically implies runItchCode.
- */
+   The runstate of the board; fetchNext logically implies runItchCode.
+*/
 struct RunState {
   bool runItchCode; // True when board is in a running state.
   bool fetchNext; // True when we actively need to retrieve a command block.
@@ -22,16 +22,16 @@ struct RunState {
 };
 
 /**
- * Methods defined in this file.
- */
+   Methods defined in this file.
+*/
 
 void sendBlock(ItchBlock command);
 void sendBoardState();
 void stopAll();
 
 /**
- * Global Variables
- */
+   Global Variables
+*/
 ItchBoard itchBoard;
 SensorData currentSensorData;
 RunState state;
@@ -64,7 +64,7 @@ void loop() {
     state = {true, true, true};
     itchBoard.resetBoard();
   }
-  
+
   if (Serial1.available() > 0) {
     StaticJsonDocument<2000> doc;
     DeserializationError error = deserializeJson(doc, Serial1);
@@ -82,7 +82,7 @@ void loop() {
 
   if (state.fetchNext) {
     ItchBlock nextCommandBlock = itchBoard.getNextCommand(currentSensorData);
-    if(nextCommandBlock.getCategory() != BlockType::NONE) {
+    if (nextCommandBlock.getCategory() != BlockType::NONE) {
       sendBlock(nextCommandBlock);
       state.fetchNext = false;
     } else if (state.loopBoard) {
@@ -99,12 +99,12 @@ void stopAll() {
 }
 
 void sendBlock(ItchBlock command) {
-    StaticJsonDocument<64> robotCommand;
-    robotCommand.set(command);
-    
-    serializeJson(robotCommand, Serial);
-    Serial.println();
-    serializeJson(robotCommand, Serial1);
+  StaticJsonDocument<64> robotCommand;
+  robotCommand.set(command);
+
+  serializeJson(robotCommand, Serial);
+  Serial.println();
+  serializeJson(robotCommand, Serial1);
 }
 
 void sendBoardState() {
@@ -116,7 +116,7 @@ void sendBoardState() {
   for (int row = 0; row < BOARD_SIZE; row++) {
     state.add(itchBoard.identifyBlock(row, false));
   }
-    
+
   root["inactivity duration"] = 2311; //TODO; this.
   serializeJson(doc, Serial);
   serializeJson(doc, Serial1);
