@@ -9,7 +9,8 @@
 #include "BlockType.h"
 
 #define BOARD_SIZE 16
-
+#define LED_ROW_OFFSET 38
+#define LIGHT_DELAY 2000 //ms
 
 /**
  * Represents a logical scope on the board.
@@ -31,13 +32,20 @@ class ItchBoard {
   SimpleStack<Scope> scopes;
   
   public:
-  ItchBoard() : executingRow(0), nextRow(0), scopes(SimpleStack<Scope>(BOARD_SIZE)) {}
+  ItchBoard() : executingRow(0), nextRow(0), scopes(SimpleStack<Scope>(BOARD_SIZE)) {
+    for (int row = A0; row <= A15; row++) {
+      pinMode(row, INPUT);
+    }
+    for (int row = LED_ROW_OFFSET; row < LED_ROW_OFFSET + BOARD_SIZE; row++) {
+      pinMode(row, OUTPUT);
+    }
+  }
 
   /**
    * Flash the light on one of the rows to indicate that an error has occured.
    */
   void errorOnRow(int row) {
-    int digitalRow = row + 38;
+    int digitalRow = row + LED_ROW_OFFSET;
     for (int i = 0; i < 10; i++) {
       delay(500);
       digitalWrite(digitalRow, HIGH);
@@ -49,79 +57,85 @@ class ItchBoard {
   /**
    * Identify the next block on the board.
    */
-  ItchBlock identifyBlock(int row) {
+  ItchBlock identifyBlock(int row, bool lightUpRow) {
     int Vin = 5;
     float R1 = 22000;
     int raw = analogRead(row);
+    ItchBlock identifiedBlock(BlockType::NONE);
     if(raw){
       float buffer = raw * Vin;
       int Vout = (buffer)/1024.0;
       buffer = (Vin/Vout) - 1;
       int R2= R1 * buffer;
       if(R2 <= 50) {
-        return ItchBlock(BlockType::HOOK_UP);
+        identifiedBlock = ItchBlock(BlockType::HOOK_UP);
       }
-      if(R2 <= 270) {
-        return ItchBlock(BlockType::END_CONTROL);
+      else if(R2 <= 270) {
+        identifiedBlock = ItchBlock(BlockType::END_CONTROL);
       }
       else if(R2 <= 520) {
-        return ItchBlock(BlockType::HOOK_DOWN);
+        identifiedBlock = ItchBlock(BlockType::HOOK_DOWN);
       }
       else if(R2 <= 2100) {
-        return ItchBlock(BlockType::ROTATE, BlockType::ROTATION_AMOUNT, R2 - 1000);
+        identifiedBlock = ItchBlock(BlockType::ROTATE, BlockType::ROTATION_AMOUNT, R2 - 1000);
       }
       else if(R2 <= 3500) {
         if(R2 <= 3250) {
-          return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 1);
+          identifiedBlock = ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 1);
         }
         else if(R2 <= 3350) {
-          return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 2);
+          identifiedBlock = ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 2);
         }
         else {
-          return ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 3);
+          identifiedBlock = ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 3);
         }
       }
       else if(R2 <= 5100) {
         if(R2 <= 4750) {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
+          identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
         }
         else if(R2 <= 4850) {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_RED);
+          identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_RED);
         }
         else if(R2 <= 5000) {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_GREEN);
+          identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_GREEN);
         }
         else {
-          return ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_BLUE);
+          identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_BLUE);
         }
       }
       else if(R2 <= 6000) {
         if(R2 <= 5750) {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 1);
+          identifiedBlock = ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 1);
         }
         else if(R2 <= 5850) {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 2);
+          identifiedBlock = ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 2);
         }
         else {
-          return ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 3);
+          identifiedBlock = ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 3);
         }
       }
       else if(R2 <= 9800) {
         if(R2 <= 9450) {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
+          identifiedBlock = ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
         }
         else if(R2 <= 9550) {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_RED);
+          identifiedBlock = ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_RED);
         }
         else if(R2 <= 9700) {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_GREEN);
+          identifiedBlock = ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_GREEN);
         }
         else {
-          return ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_BLUE);
+          identifiedBlock = ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_BLUE);
         }
       }
     }
-    return ItchBlock(BlockType::NONE); 
+    if (identifiedBlock.block != BlockType::NONE && lightUpRow) {
+      digitalWrite(row + LED_ROW_OFFSET, HIGH);
+      delay(LIGHT_DELAY);
+      digitalWrite(row + LED_ROW_OFFSET, LOW);
+    }
+    return identifiedBlock;
   }
   
   /**
@@ -137,6 +151,7 @@ class ItchBoard {
    *  will end the scope and then flip whether we are in an executing environment.
    */
   ItchBlock getNextCommand(SensorData &data) {
+    digitalWrite(executingRow + LED_ROW_OFFSET, LOW);
       if (nextRow >= BOARD_SIZE) {
         return ItchBlock(BlockType::NONE);
       } 
@@ -144,14 +159,14 @@ class ItchBoard {
       ItchBlock nextBlock;
       
       do {
-        nextBlock = identifyBlock(nextRow);  
+        nextBlock = identifyBlock(nextRow, true);
         if (nextBlock.block == BlockType::END_CONTROL) {
           Scope *currentScope;
           if (!scopes.pop(currentScope)) {
             errorOnRow(nextRow);
           } else {
             if (!skipping && currentScope->block.block != BlockType::IF && currentScope->block.block != BlockType::OTHERWISE) {
-              if (!(identifyBlock(currentScope->startRow) == currentScope->block)) { // Just applies to looping blocks
+              if (!(identifyBlock(currentScope->startRow, true) == currentScope->block)) { // Just applies to looping blocks
                 // The start block of the scope has been swapped or removed during execution, continue from end brace as though loop ended
                 errorOnRow(currentScope->startRow);
               } else if (currentScope->block.argument == BlockType::NUMBER && currentScope->loopCount > 0) { // This can only be the Repeat _ Times block
@@ -193,13 +208,15 @@ class ItchBoard {
             scopes.push({nextRow, nextBlock, nextBlock.argumentValue, !skipping});
           }
         }
-        
+
+        executingRow = nextRow;
         nextRow++;
         if (nextRow >= BOARD_SIZE) {
           return ItchBlock(BlockType::NONE);
         }
       } while(!skipping && nextBlock.getControlType() != ControlType::COMMAND);
-      
+
+      digitalWrite(executingRow + LED_ROW_OFFSET, HIGH);
       return nextBlock;
   }
 
@@ -207,6 +224,7 @@ class ItchBoard {
    * Reset the board state, back to the first row.
    */
   void resetBoard() {
+    digitalWrite(executingRow + LED_ROW_OFFSET, LOW);
     nextRow = 0;
     executingRow = 0;
     scopes.empty();

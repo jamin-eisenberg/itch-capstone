@@ -4,9 +4,9 @@
 
 #include "ItchBoard.h"
 
-#define STOP_BUTTON 0
-#define GO_BUTTON 1
-#define GO_FOREVER_BUTTON 2
+#define STOP_BUTTON 3
+#define GO_BUTTON 4
+#define GO_FOREVER_BUTTON 5
 
 /**
  * Structs used only in this file.
@@ -43,31 +43,24 @@ void setButtonStates() {
 }
 
 void setup() {
-  setButtonStates();
   Serial.begin(9600);
   Serial1.begin(9600);
 
-  for (int row = A0; row <= A15; row++) {
-    pinMode(row, INPUT);
-  }
-  for (int row = 38; row < 38 + 16; row++) {
-    pinMode(row, OUTPUT);
-  }
-  pinMode(STOP_BUTTON, INPUT);
-  pinMode(GO_BUTTON, INPUT);
-  pinMode(GO_FOREVER_BUTTON, INPUT);
-
+  setButtonStates();
   itchBoard = ItchBoard();
   state = {false, false, false};
 }
 
 void loop() {
   if (digitalRead(STOP_BUTTON) == HIGH) {
+    Serial.println("STOP BUTTON PRESSED");
     stopAll();
   } else if (digitalRead(GO_BUTTON) == HIGH) {
+    Serial.println("GO BUTTON PRESSED");
     state = {true, true, false};
     itchBoard.resetBoard();
   } else if (digitalRead(GO_FOREVER_BUTTON) == HIGH) {
+    Serial.println("FOREVER BUTTON PRESSED");
     state = {true, true, true};
     itchBoard.resetBoard();
   }
@@ -91,6 +84,7 @@ void loop() {
     ItchBlock nextCommandBlock = itchBoard.getNextCommand(currentSensorData);
     if(nextCommandBlock.getCategory() != BlockType::NONE) {
       sendBlock(nextCommandBlock);
+      state.fetchNext = false;
     } else if (state.loopBoard) {
       itchBoard.resetBoard();
     } else {
@@ -109,21 +103,21 @@ void sendBlock(ItchBlock command) {
     robotCommand.set(command);
     
     serializeJson(robotCommand, Serial);
+    Serial.println();
     serializeJson(robotCommand, Serial1);
 }
 
-void sendBoardState() { //TODO: Write this function, it's just a stub right now
+void sendBoardState() {
   StaticJsonDocument<2000> doc; // CHANGE SIZE
 
   JsonObject root = doc.to<JsonObject>();
   JsonArray state = root.createNestedArray("state");
 
-  ItchBlock block1(BlockType::IF, BlockType::CONDITION, Condition::IS_BLUE);
-  state.add(block1);
-  
-  state.add(ItchBlock(BlockType::BACKWARD, BlockType::NUMBER, 1));
-  
-  root["inactivity duration"] = 2311;
+  for (int row = 0; row < BOARD_SIZE; row++) {
+    state.add(itchBoard.identifyBlock(row, false));
+  }
+    
+  root["inactivity duration"] = 2311; //TODO; this.
   serializeJson(doc, Serial);
   serializeJson(doc, Serial1);
 }
