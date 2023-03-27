@@ -9,7 +9,7 @@
 #include "BlockType.h"
 
 #define BOARD_SIZE 16
-#define LED_ROW_OFFSET 38
+#define LED_ROW_OFFSET 24
 #define LIGHT_DELAY 2000 //ms
 
 /**
@@ -22,6 +22,8 @@ struct Scope {
   bool execute;
 };
 
+int analogPins[] = {A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15};
+
 /**
    Represents the primary ItchBoard.
 */
@@ -32,7 +34,7 @@ class ItchBoard {
     SimpleStack<Scope> scopes;
 
   public:
-    ItchBoard() : executingRow(0), nextRow(0), scopes(SimpleStack<Scope>(BOARD_SIZE)) {
+    ItchBoard() : executingRow(BOARD_SIZE - 1), nextRow(BOARD_SIZE - 1), scopes(SimpleStack<Scope>(BOARD_SIZE)) {
       for (int row = A0; row <= A15; row++) {
         pinMode(row, INPUT);
       }
@@ -58,22 +60,28 @@ class ItchBoard {
        Identify the next block on the board.
     */
     ItchBlock identifyBlock(int row, bool lightUpRow) {
-      int Vin = 5;
-      float R1 = 22000;
-      int raw = analogRead(row);
+      float Vin = 5;
       ItchBlock identifiedBlock(BlockType::NONE);
+      int raw = analogRead(analogPins[row]);
       if (raw) {
-        float buffer = raw * Vin;
-        int Vout = (buffer) / 1024.0;
-        buffer = (Vin / Vout) - 1;
-        int R2 = R1 * buffer;
-        if (R2 <= 50) {
+        float R1 = 22000;
+        float Vout = (raw * Vin) / 1024.0;
+        int R2 = 1000000000;
+        if (Vout >= 0.00001) {
+          R2 = R1 * (Vin / Vout) - R1;
+        }
+//        Serial.print("Row ");
+//        Serial.print(row);
+//        Serial.print(" resistance = ");
+//        Serial.println(R2);
+
+        if (R2 <= 100) {
           identifiedBlock = ItchBlock(BlockType::HOOK_UP);
         }
-        else if (R2 <= 270) {
+        else if (R2 <= 300) {
           identifiedBlock = ItchBlock(BlockType::END_CONTROL);
         }
-        else if (R2 <= 520) {
+        else if (R2 <= 600) {
           identifiedBlock = ItchBlock(BlockType::HOOK_DOWN);
         }
         else if (R2 <= 2100) {
@@ -130,6 +138,9 @@ class ItchBoard {
           }
         }
       }
+//      Serial.print("Identified block as ");
+//      Serial.println(blockNames[static_cast<int>(identifiedBlock.block)]);
+
       if (identifiedBlock.block != BlockType::NONE && lightUpRow) {
         digitalWrite(row + LED_ROW_OFFSET, HIGH);
         delay(LIGHT_DELAY);
@@ -152,13 +163,14 @@ class ItchBoard {
     */
     ItchBlock getNextCommand(SensorData &data) {
       digitalWrite(executingRow + LED_ROW_OFFSET, LOW);
-      if (nextRow >= BOARD_SIZE) {
-        return ItchBlock(BlockType::NONE);
-      }
+      
       bool skipping = false;
       ItchBlock nextBlock;
 
       do {
+        if (nextRow < 0) {
+          return ItchBlock(BlockType::NONE);
+        }
         nextBlock = identifyBlock(nextRow, true);
         if (nextBlock.block == BlockType::END_CONTROL) {
           Scope *currentScope;
@@ -210,10 +222,7 @@ class ItchBoard {
         }
 
         executingRow = nextRow;
-        nextRow++;
-        if (nextRow >= BOARD_SIZE) {
-          return ItchBlock(BlockType::NONE);
-        }
+        nextRow--;
       } while (!skipping && nextBlock.getControlType() != ControlType::COMMAND);
 
       digitalWrite(executingRow + LED_ROW_OFFSET, HIGH);
@@ -225,8 +234,8 @@ class ItchBoard {
     */
     void resetBoard() {
       digitalWrite(executingRow + LED_ROW_OFFSET, LOW);
-      nextRow = 0;
-      executingRow = 0;
+      nextRow = BOARD_SIZE - 1;
+      executingRow = nextRow;
       scopes.empty();
     }
 };

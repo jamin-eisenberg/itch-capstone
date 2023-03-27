@@ -2,6 +2,7 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <SoftwareSerial.h>
 
 // WIRING for mega:
 // ESP -> Arduino
@@ -14,27 +15,32 @@
 
 bool robotEnabled = true;
 ESP8266WebServer server(80);
+SoftwareSerial* logger = nullptr;
 
 void handleIncomingCommand();
 
 void setup() {
   // Setup serial port
   Serial.begin(9600);
-  Serial1.begin(9600);
+
+  delay(500);
+  Serial.swap();
+  delay(500);
+  logger = new SoftwareSerial(3, 1);
+  logger->begin(9600);
+  logger->println("\n\nUsing SoftwareSerial for logging");
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("Connecting to ");
-  Serial.print(WIFI_SSID);
+  logger->print("Connecting to ");
+  logger->print(WIFI_SSID);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(100);
-    Serial.print(".");
+    logger->print(".");
   }
-  Serial.print("\nIP address: ");
-  Serial.println(WiFi.localIP());
-
-  Serial.swap();
+  logger->print("\nIP address: ");
+  logger->println(WiFi.localIP());
 
   server.on("/", HTTP_POST, handleIncomingCommand);
   server.begin();
@@ -47,14 +53,16 @@ void loop() {
     DeserializationError error = deserializeJson(doc, Serial);
 
     if (error) {
-      Serial.print(F("deserializeJson() failed: "));
-      Serial.println(error.f_str());
+      logger->print(F("deserializeJson() failed: "));
+      logger->println(error.f_str());
       server.send(500, "text/plain", "robot sent invalid JSON response");
       return;
     }
 
     String jsonStr;
     serializeJson(doc, jsonStr);
+    logger->print("Sending sensor data back to server: ");
+    logger->println(jsonStr);
     server.send(200, "application/json", jsonStr);
   }
 
@@ -69,8 +77,8 @@ void handleIncomingCommand() {
   }
 
   String incoming = server.arg("plain");
-  Serial.print("Incoming message from server: ");
-  Serial.println(incoming);
+  logger->print("Incoming message from server: ");
+  logger->println(incoming);
   
   StaticJsonDocument<128> doc;
 
@@ -95,6 +103,9 @@ void handleIncomingCommand() {
     return;
   }
 
+  logger->print("Sending to robot: ");
+  serializeJson(doc, *logger);
+  logger->println();
+
   serializeJson(doc, Serial);
-  serializeJson(doc, Serial1);
 }

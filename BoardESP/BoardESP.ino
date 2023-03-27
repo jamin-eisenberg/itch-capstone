@@ -3,6 +3,7 @@
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <SoftwareSerial.h>
 
 // Set WiFi credentials
 #define WIFI_SSID "itch"
@@ -19,7 +20,7 @@
 #define CONSOLE_HOST_PORT_STR ":5000"
 IPAddress consolehostIP;
 
-
+SoftwareSerial* logger = nullptr;
 ESP8266WebServer server(80);
 
 WiFiClient client;
@@ -40,12 +41,19 @@ struct Response {
 
 void setup()
 {
-  // Setup serial port
+  // Setup hardware serial port
   Serial.begin(9600);
-  Serial1.begin(9600);
+  delay(500);
+  Serial.swap();
+  delay(500);
+  logger = new SoftwareSerial(3, 1);
+  logger->begin(9600);
+  logger->println("\n\nUsing SoftwareSerial for logging");
 
   // Begin Access Point
   WiFi.mode(WIFI_AP_STA);
+  logger->print("Beginning Accesss Point at ");
+  logger->println(AP_SSID);
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_HIDDEN, AP_MAX_CONNECTED_STATIONS);
 
   // Begin WiFi
@@ -54,8 +62,6 @@ void setup()
 
   serverSetup();
   registerWithConsoleHost();
-
-  Serial.swap();
 }
 
 void loop() {
@@ -65,27 +71,29 @@ void loop() {
     DeserializationError error = deserializeJson(doc, Serial);
 
     if (error) {
-      Serial.print(F("deserializeJson() failed: "));
-      Serial.println(error.f_str());
+      logger->print(F("deserializeJson() failed: "));
+      logger->println(error.f_str());
       return;
     }
 
     if (!doc.containsKey("inactivity duration")) {
       auto response = postToConnectedClient(doc);
       if (response.statusCode == 200) {
+        logger->print("Client Response to send to board: ");
+        logger->println(response.data);
         Serial.print(response.data);
-        Serial1.print(response.data);
       } else {
-        Serial.print("Response from client: ");
-        Serial.print(response.statusCode);
-        Serial.print(": ");
-        Serial.println(response.data);
+        logger->print("Response from client: ");
+        logger->print(response.statusCode);
+        logger->print(": ");
+        logger->println(response.data);
       }
     } else {
       String json;
       serializeJson(doc, json);
-      //      Serial.println("Recieved full board state");
-      //      Serial.println(json);
+      logger->println("Recieved full board state");
+      logger->println(json);
+      Serial.println("Sending out on server, do not send to robot.");
       server.send(200, "application/json", json);
     }
   }
@@ -115,13 +123,13 @@ Response postToConnectedClient(JsonDocument& doc) {
 
     String json;
     serializeJson(doc, json);
-    //    Serial.print("Posting JSON to client: ");
-    //    Serial.println(json);
+    //    logger->print("Posting JSON to client: ");
+    //    logger->println(json);
 
     int statusCode = http.POST(json);
     int responseSize = http.getSize();
 
-    if (http.getSize() > 0) {
+    if (responseSize > 0) {
       auto res = http.getString().c_str();
       //      char buffer[responseSize + 10];
       //      snprintf(buffer, responseSize + 10, "%d: %s", statusCode, res);
@@ -137,9 +145,8 @@ Response postToConnectedClient(JsonDocument& doc) {
 
 
 void onReceiveStateRequest() {
-  //  Serial.println("recevied full state request");
+  logger->println("recevied full state request");
   Serial.write(1); // just trigger the board arduino (void message)
-  Serial1.write(1); // just trigger the board arduino (void message)
 }
 
 void onReceiveEnabledMsg(bool enable) {

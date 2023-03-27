@@ -4,36 +4,36 @@ void handleNotFound() {
 
 void serverSetup() {
   // Connecting to WiFi...
-  Serial.print("Connecting to ");
-  Serial.print(WIFI_SSID);
+  logger->print("Connecting to ");
+  logger->print(WIFI_SSID);
   int maxWait = 10000;
   int wait = 0;
   while (WiFi.status() != WL_CONNECTED && wait < maxWait)
   {
     wait += 100;
     delay(100);
-    Serial.print(".");
+    logger->print(".");
   }
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println();
-    Serial.println("Could not connect to Itch! Timeout");
+    logger->println();
+    logger->println("Could not connect to Itch! Timeout");
     return;
   }
 
   // Connected to WiFi
-  Serial.println();
-  Serial.println("Connected!");
-  Serial.print("IP address for network ");
-  Serial.print(WIFI_SSID);
-  Serial.print(" : ");
-  Serial.println(WiFi.localIP());
-  Serial.print("IP address for network ");
-  Serial.print(AP_SSID);
-  Serial.print(" : ");
-  Serial.println(WiFi.softAPIP());
+  logger->println();
+  logger->println("Connected!");
+  logger->print("IP address for network ");
+  logger->print(WIFI_SSID);
+  logger->print(" : ");
+  logger->println(WiFi.localIP());
+  logger->print("IP address for network ");
+  logger->print(AP_SSID);
+  logger->print(" : ");
+  logger->println(WiFi.softAPIP());
   WiFi.hostByName("consolehost.mshome.net", consolehostIP);
-  Serial.print("Console host IP: ");
-  Serial.println(consolehostIP);
+  logger->print("Console host IP: ");
+  logger->println(consolehostIP);
 
   server.on("/", HTTP_GET, onReceiveStateRequest);
   server.on("/", HTTP_PATCH, updateEnabledStatus);
@@ -43,11 +43,11 @@ void serverSetup() {
 
 void registerWithConsoleHost() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Not connected to wiFi, ignoring console host.");
+    logger->println("Not connected to wiFi, ignoring console host.");
     return;
   }
-  Serial.println("Registering with Console Host.");
-  Serial.println("POSTing to URL: http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
+  logger->println("Registering with Console Host.");
+  logger->println("POSTing to URL: http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
   http.begin(client, "http://" + consolehostIP.toString() + CONSOLE_HOST_PORT_STR + "/boards/" AP_SSID);
   //  http.setTimeout(10000); // give it 10 secs
   http.addHeader("Content-Type", "text/plain");
@@ -55,9 +55,9 @@ void registerWithConsoleHost() {
 
   if (httpCode > 0) {
     // HTTP header has been send and Server response header has been handled
-    Serial.printf("[HTTP] POST... code: %d\n", httpCode);
+    logger->printf("[HTTP] POST... code: %d\n", httpCode);
   } else {
-    Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    logger->printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
   }
 
   http.end();

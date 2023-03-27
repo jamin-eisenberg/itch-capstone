@@ -4,9 +4,9 @@
 
 #include "ItchBoard.h"
 
-#define STOP_BUTTON 3
-#define GO_BUTTON 4
-#define GO_FOREVER_BUTTON 5
+#define STOP_BUTTON 2
+#define GO_BUTTON 3
+#define GO_FOREVER_BUTTON 4
 
 /**
    Structs used only in this file.
@@ -55,14 +55,22 @@ void loop() {
   if (digitalRead(STOP_BUTTON) == HIGH) {
     Serial.println("STOP BUTTON PRESSED");
     stopAll();
+    delay(100);
   } else if (digitalRead(GO_BUTTON) == HIGH) {
     Serial.println("GO BUTTON PRESSED");
     state = {true, true, false};
     itchBoard.resetBoard();
+    delay(100);
   } else if (digitalRead(GO_FOREVER_BUTTON) == HIGH) {
     Serial.println("FOREVER BUTTON PRESSED");
     state = {true, true, true};
     itchBoard.resetBoard();
+    delay(100);
+  }
+
+  while (Serial.available() > 0) {
+    Serial.read();
+    state.fetchNext = true; // Debug Only
   }
 
   if (Serial1.available() > 0) {
@@ -72,10 +80,27 @@ void loop() {
       return;
     }
 
-    if (doc.is<SensorData>()) {
+    if (doc.is<JsonObject>() && doc.containsKey("close to wall") && doc.containsKey("red")
+        && doc.containsKey("green") && doc.containsKey("blue")) {
+      Serial.println("Sensor Data recieved: ");
+      serializeJson(doc, Serial);
+      Serial.println();
       currentSensorData = doc.as<SensorData>();
       state.fetchNext = state.runItchCode;
     } else {
+
+      Serial.print("Recieved board scan request: ");
+      serializeJson(doc, Serial);
+      Serial.println();
+      Serial.print(doc.is<JsonObject>());
+      Serial.print(" ");
+      Serial.print(doc.containsKey("red"));
+      Serial.print(" ");
+      Serial.print(doc.containsKey("green"));
+      Serial.print(" ");
+      Serial.print(doc.containsKey("blue"));
+      Serial.print(" ");
+      Serial.println(doc.containsKey("close to wall"));
       sendBoardState();
     }
   }
@@ -95,6 +120,7 @@ void loop() {
 
 void stopAll() {
   state = {false, false, false};
+  itchBoard.resetBoard();
   sendBlock(ItchBlock(BlockType::STOP));
 }
 
@@ -102,6 +128,7 @@ void sendBlock(ItchBlock command) {
   StaticJsonDocument<64> robotCommand;
   robotCommand.set(command);
 
+  Serial.print("Sending command: ");
   serializeJson(robotCommand, Serial);
   Serial.println();
   serializeJson(robotCommand, Serial1);
@@ -113,7 +140,7 @@ void sendBoardState() {
   JsonObject root = doc.to<JsonObject>();
   JsonArray state = root.createNestedArray("state");
 
-  for (int row = 0; row < BOARD_SIZE; row++) {
+  for (int row = BOARD_SIZE - 1; row >= 0; row--) {
     state.add(itchBoard.identifyBlock(row, false));
   }
 
