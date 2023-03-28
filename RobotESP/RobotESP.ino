@@ -6,7 +6,7 @@
 
 // WIRING for mega:
 // ESP -> Arduino
-// D4 -> Rx1 
+// D4 -> Rx1
 // D7 -> Tx1
 
 // Set WiFi credentials
@@ -79,7 +79,7 @@ void handleIncomingCommand() {
   String incoming = server.arg("plain");
   logger->print("Incoming message from server: ");
   logger->println(incoming);
-  
+
   StaticJsonDocument<128> doc;
 
   DeserializationError error = deserializeJson(doc, incoming);
@@ -108,4 +108,10 @@ void handleIncomingCommand() {
   logger->println();
 
   serializeJson(doc, Serial);
+
+  //  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  //  server.sendHeader("Pragma", "no-cache");
+  //  server.sendHeader("Expires", "-1");
+  //  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  //  server.send(200, "text/plain", "hi");
 }
