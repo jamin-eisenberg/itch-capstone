@@ -37,6 +37,7 @@ void serverSetup() {
 
   server.on("/", HTTP_GET, onReceiveStateRequest);
   server.on("/", HTTP_PATCH, updateEnabledStatus);
+  server.on("/sensordata", HTTP_POST, onReceiveSensorData);
   server.onNotFound(handleNotFound);
   server.begin();
 }

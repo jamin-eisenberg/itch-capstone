@@ -79,9 +79,8 @@ void loop() {
     if (!doc.containsKey("inactivity duration")) {
       auto response = postToConnectedClient(doc);
       if (response.statusCode == 200) {
-        logger->print("Client Response to send to board: ");
+        logger->print("Robot initial response: ");
         logger->println(response.data);
-        Serial.print(response.data);
       } else {
         logger->print("Response from client: ");
         logger->print(response.statusCode);
@@ -119,10 +118,10 @@ Response postToConnectedClient(JsonDocument& doc) {
 
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
-    http.setTimeout(10000);
+    //    http.setTimeout(10000);
 
-    String json;
-    serializeJson(doc, json);
+    //    String json;
+    //    serializeJson(doc, json);
     //    logger->print("Posting JSON to client: ");
     //    logger->println(json);
 
@@ -145,8 +144,36 @@ Response postToConnectedClient(JsonDocument& doc) {
 
 
 void onReceiveStateRequest() {
-  logger->println("recevied full state request");
+  logger->println("received full state request");
   Serial.write(1); // just trigger the board arduino (void message)
+}
+
+void onReceiveSensorData() {
+  logger->println("received robot sensor data");
+
+  if (!server.hasArg("plain")) { //Check if body received
+    server.send(400, "text/plain", "Body not received");
+    return;
+  }
+
+  String incoming = server.arg("plain");
+  logger->print("Incoming message from server: ");
+  logger->println(incoming);
+
+  StaticJsonDocument<128> doc;
+
+  DeserializationError error = deserializeJson(doc, incoming);
+
+  if (error) {
+    server.send(400, "text/plain", error.c_str());
+    return;
+  }
+
+  logger->print("Sending to board: ");
+  serializeJson(doc, *logger);
+  logger->println();
+
+  serializeJson(doc, Serial);
 }
 
 void onReceiveEnabledMsg(bool enable) {
