@@ -120,10 +120,10 @@ Response postToConnectedClient(JsonDocument& doc) {
     http.addHeader("Content-Type", "application/json");
     //    http.setTimeout(10000);
 
-    //    String json;
-    //    serializeJson(doc, json);
-    //    logger->print("Posting JSON to client: ");
-    //    logger->println(json);
+    String json;
+    serializeJson(doc, json);
+    logger->print("Posting JSON to client: ");
+    logger->println(json);
 
     int statusCode = http.POST(json);
     int responseSize = http.getSize();
