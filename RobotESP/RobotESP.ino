@@ -1,5 +1,6 @@
 #include <ArduinoJson.h>
 
+#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <SoftwareSerial.h>
@@ -13,9 +14,15 @@
 #define WIFI_SSID "red-board"
 #define WIFI_PASS "capstone"
 
+#define BOARD_IP "192.168.4.1"
+
 bool robotEnabled = true;
 ESP8266WebServer server(80);
 SoftwareSerial* logger = nullptr;
+
+HTTPClient http;
+WiFiClient client;
+
 
 void handleIncomingCommand();
 
@@ -55,15 +62,35 @@ void loop() {
     if (error) {
       logger->print(F("deserializeJson() failed: "));
       logger->println(error.f_str());
-      server.send(500, "text/plain", "robot sent invalid JSON response");
       return;
     }
 
     String jsonStr;
     serializeJson(doc, jsonStr);
-    logger->print("Sending sensor data back to server: ");
+    logger->print("Sending sensor data to server: ");
     logger->println(jsonStr);
-    server.send(200, "application/json", jsonStr);
+
+    String url = "http://" BOARD_IP "/sensordata";
+
+      http.begin(client, url);
+    http.addHeader("Content-Type", "application/json");
+
+    int statusCode = http.POST(jsonStr);
+    int responseSize = http.getSize();
+
+    if (responseSize > 0) {
+      auto res = http.getString().c_str();
+      //      char buffer[responseSize + 10];
+      //      snprintf(buffer, responseSize + 10, "%d: %s", statusCode, res);
+      logger->print("Board responded with ");
+      logger->print(statusCode);
+      logger->print(": ");
+      logger->println(res);
+    } else {
+      logger->print("Board responded with ");
+      logger->print(statusCode);
+      logger->println(", with no response body");
+    }
   }
 
   server.handleClient();
@@ -109,9 +136,5 @@ void handleIncomingCommand() {
 
   serializeJson(doc, Serial);
 
-  //  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  //  server.sendHeader("Pragma", "no-cache");
-  //  server.sendHeader("Expires", "-1");
-  //  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  //  server.send(200, "text/plain", "hi");
+  server.send(200, "text/plain", "command executing...");
 }

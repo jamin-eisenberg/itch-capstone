@@ -174,6 +174,8 @@ void onReceiveSensorData() {
   logger->println();
 
   serializeJson(doc, Serial);
+
+  server.send(200, "text/plain", "Getting next command...");
 }
 
 void onReceiveEnabledMsg(bool enable) {
