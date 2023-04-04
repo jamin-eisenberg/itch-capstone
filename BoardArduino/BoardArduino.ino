@@ -4,9 +4,9 @@
 
 #include "ItchBoard.h"
 
-#define STOP_BUTTON 2
+#define STOP_BUTTON 4
 #define GO_BUTTON 3
-#define GO_FOREVER_BUTTON 4
+#define GO_FOREVER_BUTTON 2
 
 /**
    Structs used only in this file.
@@ -68,10 +68,10 @@ void loop() {
     delay(100);
   }
 
-  while (Serial.available() > 0) {
-    Serial.read();
-    state.fetchNext = true; // Debug Only
-  }
+//  while (Serial.available() > 0) {
+//    Serial.read();
+//    state.fetchNext = true; // Debug Only
+//  }
 
   if (Serial1.available() > 0) {
     StaticJsonDocument<2000> doc;
@@ -85,6 +85,11 @@ void loop() {
       Serial.println("Sensor Data recieved: ");
       serializeJson(doc, Serial);
       Serial.println();
+      // robot is done, moving to next command, turn the block read light off 
+      // (all of them, because we don't know which row we just read)
+      for (int row = LED_ROW_OFFSET; row < LED_ROW_OFFSET + BOARD_SIZE; row++) {
+        digitalWrite(row, LOW);
+      }
       currentSensorData = doc.as<SensorData>();
       state.fetchNext = state.runItchCode;
     } else {

@@ -75,7 +75,7 @@ class ItchBoard {
 //        Serial.print(" resistance = ");
 //        Serial.println(R2);
 
-        if (R2 <= 100) {
+        if (R2 > 5 && R2 <= 100) {
           identifiedBlock = ItchBlock(BlockType::HOOK_UP);
         }
         else if (R2 <= 300) {
@@ -143,8 +143,8 @@ class ItchBoard {
 
       if (identifiedBlock.block != BlockType::NONE && lightUpRow) {
         digitalWrite(row + LED_ROW_OFFSET, HIGH);
-        delay(LIGHT_DELAY);
-        digitalWrite(row + LED_ROW_OFFSET, LOW);
+//        delay(LIGHT_DELAY);
+//        digitalWrite(row + LED_ROW_OFFSET, LOW);
       }
       return identifiedBlock;
     }

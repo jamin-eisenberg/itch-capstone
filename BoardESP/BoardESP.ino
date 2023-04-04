@@ -62,10 +62,13 @@ void setup()
 
   serverSetup();
   registerWithConsoleHost();
+  logger->println("done with setup");
 }
 
 void loop() {
   if (Serial.available()) {
+    logger->println("Serial available");
+    
     StaticJsonDocument<2000> doc;
 
     DeserializationError error = deserializeJson(doc, Serial);
@@ -76,20 +79,18 @@ void loop() {
       return;
     }
 
+    String json;
+    serializeJson(doc, json);
+    logger->print("Received JSON from board: ");
+    logger->println(json);
+
     if (!doc.containsKey("inactivity duration")) {
       auto response = postToConnectedClient(doc);
-      if (response.statusCode == 200) {
-        logger->print("Robot initial response: ");
-        logger->println(response.data);
-      } else {
-        logger->print("Response from client: ");
-        logger->print(response.statusCode);
-        logger->print(": ");
-        logger->println(response.data);
-      }
+      logger->print("Response from client: ");
+      logger->print(response.statusCode);
+      logger->print(": ");
+      logger->println(response.data);
     } else {
-      String json;
-      serializeJson(doc, json);
       logger->println("Recieved full board state");
       logger->println(json);
       Serial.println("Sending out on server, do not send to robot.");
