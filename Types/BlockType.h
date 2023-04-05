@@ -219,6 +219,9 @@ bool convertToJson(const ItchBlock& src, JsonVariant dst) {
     case BlockType::NUMBER:
       dst["argument"] = src.argumentValue;
       break;
+    case BlockType::CONDITION:
+      dst["argument"] = conditionNames[src.argumentValue];
+      break;
     case BlockType::NONE:
       break;
     default:

@@ -72,10 +72,20 @@ void loop() {
 
     String url = "http://" BOARD_IP "/sensordata";
 
+    int statusCode = 0;
+    int retries = 0;
+    do {
+      if (statusCode < 0) {
+        logger->print("Failure with code ");
+        logger->print(statusCode);
+        logger->println(" Retrying....");
+      }
       http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
+      http.addHeader("Content-Type", "application/json");
 
-    int statusCode = http.POST(jsonStr);
+      statusCode = http.POST(jsonStr);
+      retries++;
+    } while (statusCode < 0 && retries < 10);
     int responseSize = http.getSize();
 
     if (responseSize > 0) {
@@ -85,11 +95,14 @@ void loop() {
       logger->print("Board responded with ");
       logger->print(statusCode);
       logger->print(": ");
-      logger->println(res);
+      logger->print(res);
+      logger->print(", retries required: ");
+      logger->println(retries);
     } else {
       logger->print("Board responded with ");
       logger->print(statusCode);
       logger->println(", with no response body");
+      logger->println();
     }
   }
 

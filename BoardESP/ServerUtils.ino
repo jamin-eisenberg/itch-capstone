@@ -14,6 +14,14 @@ void serverSetup() {
     delay(100);
     logger->print(".");
   }
+
+  
+  server.on("/", HTTP_GET, onReceiveStateRequest);
+  server.on("/", HTTP_PATCH, updateEnabledStatus);
+  server.on("/sensordata", HTTP_POST, onReceiveSensorData);
+  server.onNotFound(handleNotFound);
+  server.begin();
+
   if (WiFi.status() != WL_CONNECTED) {
     logger->println();
     logger->println("Could not connect to Itch! Timeout");
@@ -34,12 +42,6 @@ void serverSetup() {
   WiFi.hostByName("consolehost.mshome.net", consolehostIP);
   logger->print("Console host IP: ");
   logger->println(consolehostIP);
-
-  server.on("/", HTTP_GET, onReceiveStateRequest);
-  server.on("/", HTTP_PATCH, updateEnabledStatus);
-  server.on("/sensordata", HTTP_POST, onReceiveSensorData);
-  server.onNotFound(handleNotFound);
-  server.begin();
 }
 
 void registerWithConsoleHost() {

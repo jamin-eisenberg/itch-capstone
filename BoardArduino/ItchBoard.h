@@ -10,7 +10,7 @@
 
 #define BOARD_SIZE 16
 #define LED_ROW_OFFSET 24
-#define LIGHT_DELAY 2000 //ms
+#define LIGHT_DELAY 1000 //ms
 
 /**
    Represents a logical scope on the board.
@@ -63,18 +63,13 @@ class ItchBoard {
       float Vin = 5;
       ItchBlock identifiedBlock(BlockType::NONE);
       int raw = analogRead(analogPins[row]);
+      int R2 = 100000;
       if (raw) {
         float R1 = 22000;
         float Vout = (raw * Vin) / 1024.0;
-        int R2 = 1000000000;
         if (Vout >= 0.00001) {
           R2 = R1 * (Vin / Vout) - R1;
         }
-//        Serial.print("Row ");
-//        Serial.print(row);
-//        Serial.print(" resistance = ");
-//        Serial.println(R2);
-
         if (R2 > 5 && R2 <= 100) {
           identifiedBlock = ItchBlock(BlockType::HOOK_UP);
         }
@@ -98,14 +93,14 @@ class ItchBoard {
             identifiedBlock = ItchBlock(BlockType::FORWARD, BlockType::NUMBER, 3);
           }
         }
-        else if (R2 <= 5100) {
-          if (R2 <= 4750) {
+        else if (R2 <= 5200) {
+          if (R2 <= 4800) {
             identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::CLOSE_TO_WALL);
           }
-          else if (R2 <= 4850) {
+          else if (R2 <= 4900) {
             identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_RED);
           }
-          else if (R2 <= 5000) {
+          else if (R2 <= 5100) {
             identifiedBlock = ItchBlock(BlockType::IF, BlockType::CONDITION, Condition::IS_GREEN);
           }
           else {
@@ -137,14 +132,26 @@ class ItchBoard {
             identifiedBlock = ItchBlock(BlockType::UNTIL, BlockType::CONDITION, Condition::IS_BLUE);
           }
         }
+        StaticJsonDocument<64> block;
+        block.set(identifiedBlock);
+        
+        Serial.print("ROW ");
+        Serial.print(row);
+        Serial.print(" = ");
+        Serial.print(R2);
+        Serial.print(" ohms. Vout was read as: ");
+        Serial.print(", VOUT ");
+        Serial.println(Vout);
+        
+        serializeJson(block, Serial);
+        Serial.println();
+        delay(2000);
       }
-//      Serial.print("Identified block as ");
-//      Serial.println(blockNames[static_cast<int>(identifiedBlock.block)]);
-
-      if (identifiedBlock.block != BlockType::NONE && lightUpRow) {
+      auto blockControlType = identifiedBlock.getControlType();
+      if ((blockControlType == ControlType::CONTROL || blockControlType == ControlType::END_CONTROL) && lightUpRow) {
         digitalWrite(row + LED_ROW_OFFSET, HIGH);
-//        delay(LIGHT_DELAY);
-//        digitalWrite(row + LED_ROW_OFFSET, LOW);
+        delay(LIGHT_DELAY);
+        digitalWrite(row + LED_ROW_OFFSET, LOW);
       }
       return identifiedBlock;
     }
@@ -163,7 +170,7 @@ class ItchBoard {
     */
     ItchBlock getNextCommand(SensorData &data) {
       digitalWrite(executingRow + LED_ROW_OFFSET, LOW);
-      
+
       bool skipping = false;
       ItchBlock nextBlock;
 
@@ -171,15 +178,17 @@ class ItchBoard {
         if (nextRow < 0) {
           return ItchBlock(BlockType::NONE);
         }
-        nextBlock = identifyBlock(nextRow, true);
+        nextBlock = identifyBlock(nextRow, !skipping);
         if (nextBlock.block == BlockType::END_CONTROL) {
           Scope *currentScope;
           if (!scopes.pop(currentScope)) {
+            Serial.println("Syntactical error, extra end block");
             errorOnRow(nextRow);
           } else {
             if (!skipping && currentScope->block.block != BlockType::IF && currentScope->block.block != BlockType::OTHERWISE) {
               if (!(identifyBlock(currentScope->startRow, true) == currentScope->block)) { // Just applies to looping blocks
                 // The start block of the scope has been swapped or removed during execution, continue from end brace as though loop ended
+                Serial.println("Syntactical error, start scope was moved");
                 errorOnRow(currentScope->startRow);
               } else if (currentScope->block.argument == BlockType::NUMBER && currentScope->loopCount > 0) { // This can only be the Repeat _ Times block
                 scopes.push({currentScope->startRow, currentScope->block, currentScope->loopCount--, currentScope->execute});
@@ -201,6 +210,7 @@ class ItchBoard {
             Scope* currentScope;
             if (!scopes.pop(currentScope) || currentScope->block.block != BlockType::IF) {
               // Woah there! The open stack isn't an `if`, so the `otherwise` isn't valid! Carefully place scope back on the stack, back away slowly...
+              Serial.println("Syntactical error, an Otherwise without an IF scope");
               errorOnRow(nextRow);
               scopes.push(*currentScope);
             } else if (currentScope->execute) {
@@ -212,6 +222,8 @@ class ItchBoard {
           } else if (nextBlock.argument == BlockType::CONDITION) {
             scopes.push({nextRow, nextBlock, 0, !skipping}); // Only marked as an 'execution scope' if we aren't in a skip phase; same as below
             auto condition = static_cast<Condition>(nextBlock.argumentValue);
+            Serial.print("Condition Evaluates to ");
+            Serial.println(conditionValid(condition, data));
             if (conditionValid(condition, data) == (nextBlock.block == BlockType::UNTIL)) {
               // Logical XOR to deal with the UNTIL logical inversion of conditions.
               skipping = true;
@@ -223,7 +235,7 @@ class ItchBoard {
 
         executingRow = nextRow;
         nextRow--;
-      } while (!skipping && nextBlock.getControlType() != ControlType::COMMAND);
+      } while (skipping || nextBlock.getControlType() != ControlType::COMMAND);
 
       digitalWrite(executingRow + LED_ROW_OFFSET, HIGH);
       return nextBlock;

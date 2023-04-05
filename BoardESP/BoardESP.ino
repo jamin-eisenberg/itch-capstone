@@ -68,7 +68,7 @@ void setup()
 void loop() {
   if (Serial.available()) {
     logger->println("Serial available");
-    
+
     StaticJsonDocument<2000> doc;
 
     DeserializationError error = deserializeJson(doc, Serial);
@@ -116,19 +116,28 @@ Response postToConnectedClient(JsonDocument& doc) {
     address = IPaddress->addr;
 
     String url = "http://" + address.toString();
-
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    //    http.setTimeout(10000);
-
     String json;
     serializeJson(doc, json);
     logger->print("Posting JSON to client: ");
     logger->println(json);
 
-    int statusCode = http.POST(json);
-    int responseSize = http.getSize();
+    int statusCode = 0;
+    int retries = 0;
+    do {
+      if (statusCode < 0) {
+        logger->print("Failure with code ");
+        logger->print(statusCode);
+        logger->println(" Retrying....");
+      }
+      http.begin(client, url);
+      http.addHeader("Content-Type", "application/json");
+      statusCode = http.POST(json);
+      retries++;
+    } while (statusCode < 0 && retries < 10);
 
+    int responseSize = http.getSize();
+    logger->print("Retries: ");
+    logger->println(retries);
     if (responseSize > 0) {
       auto res = http.getString().c_str();
       //      char buffer[responseSize + 10];

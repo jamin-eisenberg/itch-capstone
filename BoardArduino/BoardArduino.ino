@@ -49,6 +49,13 @@ void setup() {
   setButtonStates();
   itchBoard = ItchBoard();
   state = {false, false, false};
+
+  // A little readiness indicator and helpful for testing
+  for (int row = LED_ROW_OFFSET + BOARD_SIZE - 1; row >= LED_ROW_OFFSET; row--) {
+    digitalWrite(row, HIGH);
+    delay(200);
+    digitalWrite(row, LOW);
+  }
 }
 
 void loop() {
@@ -68,11 +75,6 @@ void loop() {
     delay(100);
   }
 
-//  while (Serial.available() > 0) {
-//    Serial.read();
-//    state.fetchNext = true; // Debug Only
-//  }
-
   if (Serial1.available() > 0) {
     StaticJsonDocument<2000> doc;
     DeserializationError error = deserializeJson(doc, Serial1);
@@ -85,15 +87,9 @@ void loop() {
       Serial.println("Sensor Data recieved: ");
       serializeJson(doc, Serial);
       Serial.println();
-      // robot is done, moving to next command, turn the block read light off 
-      // (all of them, because we don't know which row we just read)
-      for (int row = LED_ROW_OFFSET; row < LED_ROW_OFFSET + BOARD_SIZE; row++) {
-        digitalWrite(row, LOW);
-      }
       currentSensorData = doc.as<SensorData>();
       state.fetchNext = state.runItchCode;
     } else {
-
       Serial.print("Recieved board scan request: ");
       serializeJson(doc, Serial);
       Serial.println();
