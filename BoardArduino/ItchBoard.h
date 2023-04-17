@@ -70,7 +70,7 @@ class ItchBoard {
         if (Vout >= 0.00001) {
           R2 = R1 * (Vin / Vout) - R1;
         }
-        if (R2 > 5 && R2 <= 100) {
+        if (R2 > 5 && R2 <= 125) {
           identifiedBlock = ItchBlock(BlockType::HOOK_UP);
         }
         else if (R2 <= 300) {
@@ -140,12 +140,10 @@ class ItchBoard {
         Serial.print(" = ");
         Serial.print(R2);
         Serial.print(" ohms. Vout was read as: ");
-        Serial.print(", VOUT ");
         Serial.println(Vout);
         
         serializeJson(block, Serial);
         Serial.println();
-        delay(2000);
       }
       auto blockControlType = identifiedBlock.getControlType();
       if ((blockControlType == ControlType::CONTROL || blockControlType == ControlType::END_CONTROL) && lightUpRow) {

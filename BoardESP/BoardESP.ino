@@ -13,7 +13,7 @@
 #define AP_SSID "red-board"
 #define AP_PASS "capstone"
 
-#define AP_CHANNEL 1
+#define AP_CHANNEL 8
 #define AP_HIDDEN 0
 #define AP_MAX_CONNECTED_STATIONS 1
 
@@ -123,17 +123,17 @@ Response postToConnectedClient(JsonDocument& doc) {
 
     int statusCode = 0;
     int retries = 0;
-    do {
-      if (statusCode < 0) {
-        logger->print("Failure with code ");
-        logger->print(statusCode);
-        logger->println(" Retrying....");
-      }
+//    do {
+//      if (statusCode < 0) {
+//        logger->print("Failure with code ");
+//        logger->print(statusCode);
+//        logger->println(" Retrying....");
+//      }
       http.begin(client, url);
       http.addHeader("Content-Type", "application/json");
       statusCode = http.POST(json);
-      retries++;
-    } while (statusCode < 0 && retries < 10);
+//      retries++;
+//    } while (statusCode < 0 && retries < 10);
 
     int responseSize = http.getSize();
     logger->print("Retries: ");

@@ -2,6 +2,7 @@
    Library Declarations
  **************************************************************************************/
 
+#include <MPU6050.h>
 #include <ArduinoJson.h>
 #include <arduino-timer.h>
 #include <Wire.h>
@@ -24,10 +25,20 @@ enum Side {
    Global Variables
  **************************************************************************************/
 
+// Device drivers
+MPU6050 mpu;
 /* Initialise with specific int time and gain values */
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
-Timer<1, micros> stopTimer;
 
+//Control variables
+unsigned long startTime;
+int rotationAmount;
+int driveDistance;
+Timer<1, micros> controlTimer;
+
+// Sensor averages
+double leftSmoothed = 0;
+double rightSmoothed = 0;
 /**************************************************************************************
    Constants
  **************************************************************************************/
@@ -35,11 +46,12 @@ Timer<1, micros> stopTimer;
 //    and the motor enable pins and servo pin need to be PWM pins, which the nano only has a handful of.
 //    Everything else can be moved around.
 
-// These will go away when I get around to using the IR encoder and a better controller
-#define ROBOT_SPEED 225 
-#define ROBOT_TURN_SPEED 225
-#define NUMBER_TO_MOVE_TIME 500000L
-#define NUMBER_TO_ROTATION_DELAY 3000L
+#define INCHES_PER_ENCODER_TICK 0.392699 // Approximately pi/8, determined by measurement of wheel radius
+#define ROBOT_SPEED 220
+#define ROBOT_TURN_SPEED 235
+#define ROTATE_CONTROL_DELAY 50000UL  // Time in microseconds (this is longer than drive control delay because the gyro doesn't update as fast)
+#define DRIVE_CONTROL_DELAY 100UL  // Time in microseconds
+#define CONTROL_TIME_CUTOFF 10000L  // Time in milliseconds
 
 // IR sensors for motor encoder, pins and constants
 const int LEFT_IR_PIN = A1;
@@ -64,6 +76,8 @@ const int LEFT_EN = 11;
 const int LEFT_DIR_1 = 4;
 const int LEFT_DIR_2 = 5;
 
+const double LEFT_GAIN = 0.5;
+const double RIGHT_GAIN = 0.5;
 /**************************************************************************************
    Function forward declarations
  **************************************************************************************/
@@ -151,12 +165,25 @@ void setMotorPins(int dir1, int dir2, int en, int motorSpeed) {
    @param motorSpeed positive for forward, negative for backward, -255 to 255.
 */
 void speedControl(Side motor, int motorSpeed) {
-  int dir1, dir2, enable = 0;
   if (motor & RIGHT) {
     setMotorPins(RIGHT_DIR_1, RIGHT_DIR_2, RIGHT_EN, motorSpeed);
   }
   if (motor & LEFT) {
     setMotorPins(LEFT_DIR_1, LEFT_DIR_2, LEFT_EN, motorSpeed);
+  }
+}
+
+/**
+   Control speed of tbe motors.
+   @param motor Set to RIGHT, LEFT, or BOTH.
+   @param motorSpeed 0 to 255.
+*/
+void pureSpeedControl(Side motor, int motorSpeed) {
+  if (motor & RIGHT) {
+    analogWrite(RIGHT_EN, motorSpeed);
+  }
+  if (motor & LEFT) {
+    analogWrite(LEFT_EN, motorSpeed);
   }
 }
 
@@ -215,7 +242,13 @@ void setup() {
   /* Configures TSL2550 (RGB sensor) with Extended Range */
   tcs.begin();
 
-  stopTimer = Timer<1, micros>();
+  mpu.initialize();
+  // Calibrate gyroscope. The calibration must be at rest.
+  mpu.setXGyroOffset(220);
+  mpu.setYGyroOffset(76);
+  mpu.setZGyroOffset(-85);
+
+  controlTimer = Timer<1, micros>();
 }
 
 void loop() {
@@ -230,42 +263,102 @@ void loop() {
       Serial.println(error.c_str());
     }
   }
-  if (!stopTimer.empty()) {
-    stopTimer.tick<void>();
+  if (!controlTimer.empty()) {
+    controlTimer.tick<void>();
   }
 }
 
 /**************************************************************************************
+   Control methods
+ **************************************************************************************/
+bool under = false;
+unsigned long lastTime = 0;
+bool straightDriveControl(void*) {
+  int leftEnc = analogRead(LEFT_IR_PIN);
+  int rightEnc = analogRead(RIGHT_IR_PIN);
+  leftSmoothed = (leftSmoothed * 4 + leftEnc) / 5.0;
+  rightSmoothed = (rightSmoothed * 4 + rightEnc) / 5.0;
+  leftEnc -= leftSmoothed;
+  rightEnc -= rightSmoothed;
+
+  if (leftEnc > 0 && under) {
+    under = false;
+    driveDistance -= 1;
+  } else if (leftEnc < -0 && !under) {
+    under = true;
+  }
+  if (rightEnc > 0 && under) {
+    under = false;
+    driveDistance -= 1;
+  } else if (rightEnc < -0 && !under) {
+    under = true;
+  }
+
+  if (abs(driveDistance + driveDistance) / 2 <= 1 || (millis() - startTime > CONTROL_TIME_CUTOFF)) {
+    stopMotor(BOTH);
+    onRobotDone();
+    return false;
+
+  }
+
+  unsigned long now = millis();
+  int az = round(mpu.getRotationZ() / 125.0);
+  rotationAmount += ((now - lastTime) / 1000.0) * az;
+
+  double leftSpeed = min(max(ROBOT_SPEED, ROBOT_SPEED + LEFT_GAIN * (36 * rotationAmount + driveDistance)), 255);
+  double rightSpeed = min(max(ROBOT_SPEED, ROBOT_SPEED + RIGHT_GAIN * (36 * rotationAmount + driveDistance)), 255);
+
+  pureSpeedControl(LEFT, leftSpeed);
+  pureSpeedControl(RIGHT, rightSpeed);
+  lastTime = now;
+  return true;
+}
+
+bool rotateOnCenterControl(void*) {
+  int az = round(mpu.getRotationZ() / 125.0);
+  rotationAmount += (ROTATE_CONTROL_DELAY / 1000000.0) * az;
+  int turnSign = ((rotationAmount > 0) ? (1) : (-1));
+  if (abs(rotationAmount) <= 5 || (millis() - startTime > CONTROL_TIME_CUTOFF)) {
+    stopMotor(BOTH);
+    onRobotDone();
+    return false;
+  }
+  speedControl(RIGHT, -ROBOT_TURN_SPEED * turnSign);
+  speedControl(LEFT, ROBOT_TURN_SPEED * turnSign);
+  return true;
+}
+/**************************************************************************************
    Communications methods
  **************************************************************************************/
-
-bool completeCommand(void*) {
-  stopMotor(BOTH);
-  onRobotDone();
-  return false;
-}
 
 void onReceiveCommand(JsonDocument& doc) {
   ItchBlock b = doc.as<ItchBlock>();
 
-  stopTimer.cancel(); // Kill any existing timer and stop motors.
+  controlTimer.cancel(); // Kill any existing timer and stop motors.
   stopMotor(BOTH);
   switch (b.block) {
     case BlockType::ROTATE:
       {
-        int turnSign = ((b.argumentValue > 0) ? (1) : (-1));
-        speedControl(RIGHT, -ROBOT_TURN_SPEED * turnSign);
-        speedControl(LEFT, ROBOT_TURN_SPEED * turnSign);
-        stopTimer.in(abs(b.argumentValue) * NUMBER_TO_ROTATION_DELAY, completeCommand);
+        rotationAmount = b.argumentValue;
+        startTime = millis();
+        controlTimer.every(ROTATE_CONTROL_DELAY, rotateOnCenterControl, NULL);
       }
       break;
     case BlockType::FORWARD:
-      speedControl(BOTH, ROBOT_SPEED);
-      stopTimer.in(b.argumentValue * NUMBER_TO_MOVE_TIME, completeCommand);
+      driveDistance = (int)(b.argumentValue / INCHES_PER_ENCODER_TICK);
+      startTime = millis();
+      lastTime = startTime;
+      rotationAmount = 0;
+      speedControl(BOTH, 1); // Sets the motor pins to forward
+      controlTimer.every(DRIVE_CONTROL_DELAY, straightDriveControl, NULL);
       break;
     case BlockType::BACKWARD:
-      speedControl(BOTH, -ROBOT_SPEED);
-      stopTimer.in(b.argumentValue * NUMBER_TO_MOVE_TIME, completeCommand);
+      driveDistance = (int)(b.argumentValue / INCHES_PER_ENCODER_TICK);
+      startTime = millis();
+      lastTime = startTime;
+      rotationAmount = 0;
+      speedControl(BOTH, -1); // Sets the motor pins to backward
+      controlTimer.every(DRIVE_CONTROL_DELAY, straightDriveControl, NULL);
       break;
     case BlockType::STOP:
       stopMotor(BOTH);

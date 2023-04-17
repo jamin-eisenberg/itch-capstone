@@ -15,6 +15,7 @@
 #define WIFI_PASS "capstone"
 
 #define BOARD_IP "192.168.4.1"
+#define AP_CHANNEL 8
 
 bool robotEnabled = true;
 ESP8266WebServer server(80);
@@ -38,7 +39,7 @@ void setup() {
   logger->println("\n\nUsing SoftwareSerial for logging");
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  WiFi.begin(WIFI_SSID, WIFI_PASS, AP_CHANNEL, NULL, true);
   logger->print("Connecting to ");
   logger->print(WIFI_SSID);
   while (WiFi.status() != WL_CONNECTED)
@@ -75,7 +76,7 @@ void loop() {
     int statusCode = 0;
     int retries = 0;
     do {
-      if (statusCode < 0) {
+      if (statusCode < 0 && statusCode != -11) {
         logger->print("Failure with code ");
         logger->print(statusCode);
         logger->println(" Retrying....");
